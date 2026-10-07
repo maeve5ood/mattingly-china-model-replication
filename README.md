@@ -45,4 +45,7 @@ python run_all.py
 
 | File | Corresponds to |
 |---|---|
-| _to be added_ | |
+| `output/tables/sample_flow.csv` | Sample construction: respondents screened out before randomization (N = 6,276 randomized) |
+| `output/tables/primary_coefficients.csv` | Table A3: effects on preference for China's political model, economic model, and world leadership, with and without covariates |
+| `output/tables/table_a3_check.csv` | Side-by-side comparison of replicated and published Table A3 estimates |
+| `output/tables/standardized_effects.csv` | Unadjusted effects in control-group standard deviations (reported in the main text) |
