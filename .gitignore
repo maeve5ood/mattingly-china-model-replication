@@ -1,0 +1,9 @@
+# Raw and processed data (download from Dataverse; see README.md)
+data/raw/
+data/processed/
+
+# OS / Python artifacts
+.DS_Store
+__pycache__/
+*.pyc
+.venv/
