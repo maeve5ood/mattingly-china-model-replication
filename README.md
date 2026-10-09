@@ -49,3 +49,7 @@ python run_all.py
 | `output/tables/primary_coefficients.csv` | Table A3: effects on preference for China's political model, economic model, and world leadership, with and without covariates |
 | `output/tables/table_a3_check.csv` | Side-by-side comparison of replicated and published Table A3 estimates |
 | `output/tables/standardized_effects.csv` | Unadjusted effects in control-group standard deviations (reported in the main text) |
+| `output/tables/ext_companion.csv` | Extension A: economic vs. political companion video within the China and USA arms (with MDEs) |
+| `output/tables/ext_competition_independence.csv` | Extension B: test that US and Chinese videos were assigned independently in the Competition arm |
+| `output/tables/ext_competition_types.csv` | Extension B: effects of economic vs. political Chinese and US videos in the Competition arm |
+| `output/tables/ext_competition_videos.csv` | Extension B: effect of each video relative to its country's `pol2` video |
