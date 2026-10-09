@@ -53,3 +53,6 @@ python run_all.py
 | `output/tables/ext_competition_independence.csv` | Extension B: test that US and Chinese videos were assigned independently in the Competition arm |
 | `output/tables/ext_competition_types.csv` | Extension B: effects of economic vs. political Chinese and US videos in the Competition arm |
 | `output/tables/ext_competition_videos.csv` | Extension B: effect of each video relative to its country's `pol2` video |
+| `output/figures/fig1_main_effects.{pdf,png}` | Covariate-adjusted treatment effects (replicates the paper's main results figure) |
+| `output/figures/fig2_companion.{pdf,png}` | Extension A: economic vs. political companion video, China and USA arms |
+| `output/figures/fig3_competition_videos.{pdf,png}` | Extension B: video-level effects in the Competition arm |
