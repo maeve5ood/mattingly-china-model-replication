@@ -94,8 +94,9 @@ def add_legend(fig):
 def save(fig, name):
     """Save a figure as PDF (for the paper) and PNG (for previews)."""
     FIGURES.mkdir(parents=True, exist_ok=True)
-    for ext in ("pdf", "png"):
-        fig.savefig(FIGURES / f"{name}.{ext}")
+    # Omit the creation timestamp so that re-running produces identical PDFs.
+    fig.savefig(FIGURES / f"{name}.pdf", metadata={"CreationDate": None})
+    fig.savefig(FIGURES / f"{name}.png")
     plt.close(fig)
 
 

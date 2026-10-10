@@ -40,7 +40,14 @@ EXPECTED_N_COUNTRIES = 19
 
 def load_raw():
     """Read the `clean` data frame from the authors' RData file."""
-    return pyreadr.read_r(RAW / "clean.RData")["clean"]
+    path = RAW / "clean.RData"
+    if not path.exists():
+        raise FileNotFoundError(
+            f"{path.relative_to(ROOT)} not found. Download the replication package from "
+            "https://doi.org/10.7910/DVN/CQ4FZR and place the files from its Data/ folder "
+            "in data/raw/ (see README)."
+        )
+    return pyreadr.read_r(path)["clean"]
 
 
 def classify_screening(df):
