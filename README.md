@@ -26,6 +26,12 @@ pip install -r requirements.txt
 python run_all.py
 ```
 
+To rebuild the paper after running the pipeline (requires a LaTeX distribution):
+
+```bash
+cd paper && latexmk -pdf main.tex
+```
+
 ## Repository structure
 
 ```
@@ -35,6 +41,9 @@ python run_all.py
 │   ├── 02_replicate.py   # main results (Table A3)
 │   ├── 03_extension.py   # video-level and order effects
 │   └── 04_figures.py     # figures
+├── paper/
+│   ├── main.tex          # replication and extension paper (LaTeX)
+│   └── main.pdf          # compiled paper
 ├── data/                 # raw and processed data (not tracked)
 └── output/
     ├── tables/
