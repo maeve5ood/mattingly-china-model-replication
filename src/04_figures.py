@@ -7,9 +7,11 @@ interval, one color per outcome. They read only the CSV tables written by
 Input:  output/tables/primary_coefficients.csv
         output/tables/ext_companion.csv
         output/tables/ext_competition_videos.csv
+        output/tables/ext_companion_mechanisms.csv
 Output: output/figures/fig1_main_effects.{pdf,png}
         output/figures/fig2_companion.{pdf,png}
         output/figures/fig3_competition_videos.{pdf,png}
+        output/figures/fig4_companion_mechanisms.{pdf,png}
 """
 
 from pathlib import Path
@@ -57,18 +59,22 @@ def load_table(name):
     return pd.read_csv(TABLES / name)
 
 
-def coef_plot(ax, table, row_labels, xlabel):
+def coef_plot(ax, table, row_labels, xlabel, styles=OUTCOME_STYLE, series="outcome"):
     """Draw estimates and 95% CIs on `ax`, one row per entry of `row_labels`.
 
-    `table` needs columns `row`, `outcome`, `estimate`, `ci_low`, `ci_high`.
+    `table` needs columns `row`, `estimate`, `ci_low`, `ci_high`, and the
+    column named by `series`, whose values are the keys of `styles` (one
+    color and marker per series).
     `row_labels` maps each value of `row` to its axis label, top to bottom.
     """
     rows = list(row_labels)
-    for i, outcome in enumerate(OUTCOME_STYLE):
-        style = OUTCOME_STYLE[outcome]
-        sub = table[table["outcome"] == outcome].set_index("row").loc[rows]
-        # Rows run top to bottom, so y decreases; outcomes are offset around each row.
-        y = [len(rows) - 1 - k + (DODGE / 2 - i * DODGE) for k in range(len(rows))]
+    n_series = len(styles)
+    for i, key in enumerate(styles):
+        style = styles[key]
+        sub = table[table[series] == key].set_index("row").loc[rows]
+        # Rows run top to bottom, so y decreases; series are offset around each row.
+        offset = (n_series - 1) * DODGE / 2 - i * DODGE
+        y = [len(rows) - 1 - k + offset for k in range(len(rows))]
         ax.hlines(y, sub["ci_low"], sub["ci_high"], color=style["color"], linewidth=1.5)
         ax.plot(sub["estimate"], y, linestyle="none", marker=style["marker"], markersize=6,
                 color=style["color"], markeredgecolor="white", markeredgewidth=0.8,
@@ -145,11 +151,36 @@ def fig_competition_videos():
     save(fig, "fig3_competition_videos")
 
 
+def fig_companion_mechanisms():
+    """Figure 4: companion effect on perceptions of the arm's country, by item."""
+    table = load_table("ext_companion_mechanisms.csv").rename(columns={"term": "row"})
+    rows = {label: label for label in table["row"].unique()}
+    # Single series per panel, so no legend is needed.
+    styles = {"all": {"label": "Estimate", "color": OUTCOME_STYLE["political_model"]["color"],
+                      "marker": "o"}}
+    table["series"] = "all"
+    panels = [("China", "China arm: perceptions of China"),
+              ("USA", "USA arm: perceptions of the US")]
+    n_performance = (table.drop_duplicates("row")["dimension"] == "performance").sum()
+
+    fig, axes = plt.subplots(1, 2, figsize=(7, 3.4), sharex=True, sharey=True)
+    for ax, (arm, title) in zip(axes, panels):
+        coef_plot(ax, table[table["arm"] == arm], rows, xlabel="", styles=styles, series="series")
+        ax.set_title(title, fontsize=9, color=TEXT, loc="left")
+        # Separate performance items (top) from democracy items (bottom).
+        ax.axhline(len(rows) - n_performance - 0.5, color=GRID, linewidth=0.8)
+    axes[1].tick_params(axis="y", labelleft=False)
+    fig.supxlabel("Economic vs. political companion video (difference, 1–7 agreement scale)",
+                  fontsize=9, y=-0.04)
+    save(fig, "fig4_companion_mechanisms")
+
+
 def main():
     """Draw all figures."""
     fig_main_effects()
     fig_companion()
     fig_competition_videos()
+    fig_companion_mechanisms()
     print(f"Saved figures to {FIGURES.relative_to(ROOT)}/")
 
 

@@ -1,0 +1,9 @@
+arm,video1,video2,n
+China,china_econ1,china_pol2,415
+China,china_econ2,china_pol2,429
+China,china_pol1,china_pol2,396
+China,china_pol2,china_pol1,382
+USA,us_econ1,us_pol2,411
+USA,us_econ2,us_pol2,383
+USA,us_pol1,us_pol2,385
+USA,us_pol2,us_pol1,386
