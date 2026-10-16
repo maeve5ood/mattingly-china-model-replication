@@ -7,6 +7,10 @@ econ_model,True,Constant,3.76,3.7609,0.23,0.2322,5946,5946,True
 econ_model,True,China,0.87,0.87,0.05,0.0539,5946,5946,True
 econ_model,True,USA,-0.57,-0.5709,0.05,0.0492,5946,5946,True
 econ_model,True,Competition,0.28,0.2809,0.06,0.0556,5946,5946,True
+world_leader,True,Constant,2.74,2.739,0.2,0.1966,5943,5943,True
+world_leader,True,China,0.72,0.7245,0.05,0.0498,5943,5943,True
+world_leader,True,USA,-0.31,-0.3144,0.04,0.0448,5943,5943,True
+world_leader,True,Competition,0.24,0.2387,0.05,0.0503,5943,5943,True
 political_model,False,Constant,2.56,2.5647,0.03,0.0313,5952,5952,True
 political_model,False,China,1.05,1.045,0.05,0.0502,5952,5952,True
 political_model,False,USA,-0.44,-0.4357,0.04,0.042,5952,5952,True
@@ -15,3 +19,7 @@ econ_model,False,Constant,2.88,2.8781,0.04,0.0384,5946,5946,True
 econ_model,False,China,0.87,0.8742,0.06,0.0555,5946,5946,True
 econ_model,False,USA,-0.58,-0.5809,0.05,0.051,5946,5946,True
 econ_model,False,Competition,0.28,0.2833,0.06,0.0571,5946,5946,True
+world_leader,False,Constant,2.75,2.7493,0.03,0.0349,5943,5943,True
+world_leader,False,China,0.72,0.7238,0.05,0.052,5943,5943,True
+world_leader,False,USA,-0.33,-0.3337,0.05,0.0479,5943,5943,True
+world_leader,False,Competition,0.23,0.2266,0.05,0.0525,5943,5943,True

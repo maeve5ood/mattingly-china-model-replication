@@ -6,9 +6,11 @@
 \usepackage{microtype}
 \usepackage{setspace}
 \usepackage{booktabs}
+\usepackage{array}
 \usepackage{graphicx}
 \usepackage{amsmath}
 \usepackage{caption}
+\usepackage{float}
 \usepackage[hidelinks]{hyperref}
 
 \onehalfspacing
@@ -29,20 +31,22 @@
 \maketitle
 
 \begin{abstract}
-\noindent Mattingly et al.\ (2025) show in a 19-country experiment that short videos from China's state broadcaster CGTN substantially increase preference for China's political and economic models over those of the United States. I reproduce the paper's main results in Python from the authors' replication data; every coefficient, standard error, and sample size in the primary results table matches the published values. I then take up the authors' call to ``unbundle'' the treatments by exploiting the randomization of specific videos within treatment arms. I document how videos were actually assigned, reproduce an exploratory video-type analysis that appears in the replication code but not in the published paper, and show that it pools two arms whose effects run in opposite directions. Three findings emerge. Within the China arm, an economic rather than a second political video raises preference for China's economic model by about a quarter of a point on a six-point scale, but not preference for its political model; this holds when video position is held fixed. The economic video does not work by improving perceptions of China's growth, which are already high, while the political video does more to improve perceptions of China's leadership. And when Chinese and US videos compete head-to-head, the four CGTN videos differ markedly in persuasiveness, with the least persuasive one being the video every respondent in the China arm saw.
+\noindent Mattingly et al.\ (2025) show in a 19-country experiment that short videos from China's state broadcaster CGTN substantially increase preference for China's political and economic models over those of the United States. I reproduce the paper's main results in Python from the authors' replication data; all 24 coefficients, standard errors, and sample sizes in the primary results table match the published values. I then exploit a layer of randomization that the published paper does not analyze: within treatment arms, the specific videos each respondent saw were also randomly assigned. Three findings emerge. First, individual messages differ markedly. Among respondents who saw a single CGTN video, the most and least persuasive of the four videos differ by 0.6 points on preference for China's political model and by nearly one point on its economic model, on six-point scales. Second, in two independent designs, economic videos are not detectably less persuasive than the stronger political video about China's political model, and they are more persuasive about its economic model. Third, the within-arm assignment departed from the design as described: every respondent in the paper's China arm saw the same political video, which was the least persuasive of the four in the Competition arm. Whether the headline China-arm estimate is therefore conservative depends on how videos combine, which these data cannot test.
 \end{abstract}
 
 \section{Introduction}
 
 Can an authoritarian state persuade foreign publics that its model of governance is superior? Mattingly, Incerti, Ju, Moreshead, Tanaka, and Yamagishi (2025) answer this question with a large preregistered experiment. In June 2022, they showed 6,276 respondents in 19 countries short videos produced by China's state broadcaster CGTN, by the US State Department, by both, or neither, and then asked whether they preferred the Chinese or the American political and economic model. The effects are large. Two CGTN videos raise the share of respondents preferring China's political model from 16 to 54 percent. US videos move respondents toward the American model, but by less. And when respondents see one video from each country, opinion still shifts toward China.
 
-Each treatment in the experiment is a \emph{bundle} of two videos, and the paper estimates the effect of each bundle as a whole. In their conclusion, the authors suggest that scholars build on their findings ``by further `unbundling' the treatments and theorizing about which specific messages are the most persuasive.'' This paper takes a step in that direction using the original data.
+Each treatment in the experiment is a \emph{bundle} of two videos, and the paper estimates the effect of each bundle as a whole. In their conclusion, the authors identify ``unbundling'' the treatments, and theorizing about which specific messages are most persuasive, as a priority for future research. This paper takes a first step in that direction using the original data.
 
-The paper makes two contributions. The first is a replication. I re-implement the authors' primary analysis in Python, starting from their analysis dataset, and reproduce all sixteen coefficients and standard errors in their primary results table exactly at the reported precision. Along the way I document how the analysis sample is constructed and several details that matter when moving the analysis from R to Python.
+The question connects the study to two literatures. Research on authoritarian propaganda asks when and how state media persuade (e.g., Carter and Carter 2023), and Mattingly et al.\ extend that question to foreign audiences. Research on experimental design and persuasion warns that effects estimated with a few fixed stimuli may not generalize to the wider population of messages a source produces, because stimuli differ in ways the researcher did not intend (Wells and Windschitl 1999; Clifford, Leeper, and Rainey 2023). Persuasive effects tend to be similar across types of people (Coppock 2023) but can vary considerably across messages, which is why testing many messages pays off for campaigns (Hewitt et al.\ 2024). If the same is true of state media, the effect of ``CGTN'' is better understood as a distribution over messages than as a single number.
 
-The second contribution is an extension. The experiment randomized not only which arm a respondent entered but also which videos they saw within it, so comparisons across videos within an arm are as credibly causal as the paper's comparisons across arms. I first document the assignment rule in the data, which differs in an informative way from the description in the paper: in the China and USA arms, every respondent saw the same political video, and only the companion video varied. I then reproduce an exploratory video-type analysis in the authors' replication code that is not reported in the paper. Its estimate of the economic-versus-political contrast matches mine, but because the Competition arm's videos are coded by their US video, it pools Competition-arm respondents with the USA arm and masks the US videos' effects. Separating the arms recovers them. Building on this, I test whether the companion-video comparison is confounded with the order in which videos were shown, examine which perceptions of China each type of content changes, and use the Competition arm's four-by-four factorial design to estimate the effect of each individual video.
+The paper makes two contributions. The first is a replication. I re-implement the authors' primary analysis in Python, starting from their analysis dataset, and reproduce all 24 coefficients and standard errors in their primary results table exactly at the reported precision. Along the way I document how the analysis sample is constructed and several details that matter when moving the analysis from R to Python.
 
-The results refine the paper's account of how CGTN persuades. Economic content raises preference for China's economic model but not its political model. It does so without improving perceptions of China's growth, which most respondents already rate highly. Political content instead does more to improve perceptions that China selects competent leaders. Individual videos also differ substantially in persuasiveness, and these differences do not reduce to the economic-versus-political distinction. These patterns echo a broader point in the study of persuasion: effects estimated with a few stimuli can depend heavily on which stimuli were chosen. All within-arm comparisons rely on a small number of videos and smaller subsamples, so I report minimum detectable effects and multiple-comparison-adjusted $p$-values throughout and interpret null results cautiously.
+The second contribution is an extension. The experiment randomized not only which arm a respondent entered but also which videos they saw within it. I show that this within-arm randomization has a specific structure. In the Competition arm, one Chinese and one US video were drawn independently from each country's four videos, forming a four-by-four factorial design in which each respondent saw a single CGTN video. In the China and US arms, every respondent saw the same political video, and only its companion was randomized. Because these assignments are random, comparisons across videos within an arm are as credibly causal as the paper's comparisons across arms.
+
+Three results follow. Individual CGTN messages differ in persuasiveness by more than the Competition arm's overall effect, and these differences do not reduce to economic versus political content. Economic content nonetheless compares well with political content: it is not detectably less persuasive than the stronger political video about China's political model, and it is more persuasive about its economic model. And every respondent in the China arm saw the CGTN video that was weakest in the Competition arm. This raises the possibility that the paper's headline estimate understates what other combinations of CGTN content could achieve, a hypothesis that requires a direct test because videos may complement or substitute for one another. All of these comparisons rely on a small number of videos and smaller subsamples, so I report minimum detectable effects and multiple-comparison-adjusted $p$-values throughout and interpret null results cautiously.
 
 \section{The Original Study}
 
@@ -55,9 +59,9 @@ The results refine the paper's account of how CGTN persuades. Economic content r
   \item \textbf{USA}: two of four US State Department videos;
   \item \textbf{Competition}: one CGTN video and one US video.
 \end{itemize}
-Each country's video pool contained two videos promoting its political model and two promoting its economic model. The authors selected these videos from large corpora of CGTN and State Department content which they characterize with topic models, and use text-based distance measures to show that the selected videos are representative of what each broadcaster produces.
+Each country's video pool contained two videos promoting its political model and two promoting its economic model. In the single-country arms, every respondent was to see at least one political video (Mattingly et al.\ 2025, footnote 9). The authors selected these videos from large corpora of CGTN and State Department content which they characterize with topic models, and use text-based distance measures to show that the selected videos are representative of what each broadcaster produces. Section~\ref{sec:videos} describes the eight videos.
 
-\paragraph{Outcomes and estimation.} The primary outcomes are two six-point scales asking whether respondents prefer the US or the Chinese political model and economic model (1 = strongly prefer the United States, 6 = strongly prefer China). The authors estimate effects by OLS with HC2 robust standard errors, both without covariates and with country fixed effects plus gender, age, education, national pride, and left--right ideology. Missing covariate values are imputed by predictive mean matching.
+\paragraph{Outcomes and estimation.} The primary outcomes are two six-point scales asking whether respondents prefer the US or the Chinese political model and economic model (1 = strongly prefer the United States, 6 = strongly prefer China); a third asks which country respondents would like to be the world leader. The authors estimate effects by OLS with HC2 robust standard errors, both without covariates and with country fixed effects plus gender, age, education, national pride, and left--right ideology. Missing covariate values are imputed by predictive mean matching.
 
 \paragraph{Findings.} All three treatments have large and precisely estimated effects (Table~\ref{tab:replication}). The China treatment raises preference for China's political model by 1.04 points and for its economic model by 0.87 points. The US treatment lowers them by 0.43 and 0.57 points. When the two compete, the net effect still favors China (0.36 and 0.28 points). Mechanism analyses suggest that CGTN videos work mainly by improving perceptions of China's performance rather than of its democratic qualities.
 
@@ -65,7 +69,7 @@ Each country's video pool contained two videos promoting its political model and
 
 \subsection{Data and Sample}
 
-The replication package includes the raw Qualtrics exports, the authors' cleaning script, and the cleaned analysis dataset. I start from the cleaned dataset rather than the raw exports for one reason. The authors impute missing covariates with the R package \texttt{mice}, and the imputed values depend on R's random number generator. They cannot be reproduced exactly in Python, so re-running the imputation would produce small differences in the covariate-adjusted estimates that reflect software rather than substance. I read the authors' cleaning script line by line and confirmed every step that affects the analysis sample.
+The replication package includes the raw Qualtrics exports, the authors' cleaning script, and the cleaned analysis dataset. I start from the cleaned dataset rather than the raw exports for one reason. The authors impute missing covariates with the R package \texttt{mice}, and the imputed values depend on R's random number generator. They cannot be reproduced exactly in Python, so re-running the imputation would produce small differences in the covariate-adjusted estimates that reflect software rather than substance. The cleaned file reproduces the paper's arm sizes (1,558, 1,622, 1,565, and 1,531) and outcome sample sizes, which the code checks automatically.
 
 The cleaned file contains 12,941 respondents, of whom 6,276 were randomized. Table~\ref{tab:flow} shows where the others left the survey. The categories are mutually exclusive and follow the order of the questionnaire. More than two in five respondents who completed the attention checks failed them, so the analysis sample is selected toward attentive respondents. This selection happens before randomization, so it does not threaten the comparison between arms, but it does define the population to which the estimates apply.
 
@@ -102,7 +106,7 @@ Three implementation details turned out to matter. First, the Python reader for 
 
 \subsection{Results}
 
-Table~\ref{tab:replication} reports the replicated estimates. Every coefficient, standard error, and sample size is identical to the published Table A3 when rounded to two decimals; an automated cell-by-cell comparison is included in the code repository. Figure~\ref{fig:main} displays the covariate-adjusted effects. Adjusting for covariates barely moves the point estimates (for the China arm's effect on the political model, from 1.045 to 1.040) and modestly shrinks the standard errors, as expected when treatment is randomized and covariates are prognostic.
+Table~\ref{tab:replication} reports the replicated estimates for the two outcomes this paper focuses on. Every coefficient, standard error, and sample size is identical to the published Table A3 when rounded to two decimals, as are the eight estimates for the world-leader outcome that the table omits; an automated cell-by-cell comparison of all 24 is included in the code repository. Figure~\ref{fig:main} displays the covariate-adjusted effects. Adjusting for covariates barely moves the point estimates (for the China arm's effect on the political model, from 1.045 to 1.040) and modestly shrinks the standard errors, as expected when treatment is randomized and covariates are prognostic.
 
 \begin{table}[ht]
 \centering
@@ -123,7 +127,7 @@ Covariates and country FE & Yes & Yes & No & No \\
 $N$         & 5,952 & 5,946 & 5,952 & 5,946 \\
 \bottomrule
 \end{tabular}
-\tablenote{\emph{Note:} OLS estimates with HC2 robust standard errors in parentheses. Outcomes range from 1 (strongly prefer the US model) to 6 (strongly prefer the Chinese model). Covariates are gender, age, education, national pride, and left--right ideology. All entries match the published values at two decimals.}
+\tablenote{\emph{Note:} OLS estimates with HC2 robust standard errors in parentheses. Outcomes range from 1 (strongly prefer the US model) to 6 (strongly prefer the Chinese model). Covariates are gender, age, education, national pride, and left--right ideology. All entries match the published values at two decimals, as do the estimates for the world-leader outcome (not shown).}
 \end{table}
 
 \begin{figure}[ht]
@@ -139,125 +143,225 @@ To convey magnitude, I follow the authors in dividing the unadjusted effects by 
 
 \subsection{Motivation}
 
-The replication confirms that a bundle of two CGTN videos is highly persuasive. It does not tell us which content does the work. If the effect operates through performance information, as the authors argue, videos about economic achievement might be especially effective, perhaps even for views about the political model. Alternatively, persuasion might depend on features of particular videos, in which case the effect of ``Chinese state media'' would depend on which messages audiences happen to see.
+The replication confirms that a bundle of two CGTN videos is highly persuasive. It does not tell us which content does the work. The published paper and its appendix report effects only by arm.\footnote{The authors' replication code (\texttt{7.\ mechanism\_analysis.R}) contains an unreported regression of the outcomes on the type of each respondent's first-listed video. Appendix B reproduces it, shows that it pools Competition-arm respondents with the USA arm, and re-estimates it with the arms kept separate.} This question matters both for theory and for policy. If the effect operates through performance information, as the authors argue, then videos about economic achievement might be especially effective, perhaps even for views about the political model. Alternatively, persuasion might depend on idiosyncratic features of particular videos, in which case the effect of ``Chinese state media'' would depend heavily on which messages audiences happen to see. The two possibilities are not exclusive, and the design allows both to be examined.
 
-The second possibility is a familiar concern in experimental research. When a treatment is represented by one or a few stimuli, its estimated effect may reflect idiosyncrasies of those stimuli rather than the category they stand for (Wells and Windschitl 1999). Clifford, Leeper, and Rainey (2024) show that the effects of party cues vary considerably across the policy topics used to deliver them, and Hewitt et al.\ (2024) find meaningful variation in the persuasive effects of hundreds of campaign advertisements that common theories of persuasiveness predict poorly. At the same time, Coppock (2023) shows that a given message tends to move different kinds of people in the same direction and by similar amounts. Together these studies suggest that variation in persuasion lies more in messages than in audiences, which makes the eight videos in this experiment a natural place to look.
+\subsection{The Videos}
+\label{sec:videos}
 
-\subsection{How Videos Were Assigned}
+Table~\ref{tab:videocontent} summarizes the eight videos. All four CGTN videos argue from performance: merit-based selection of leaders, leadership turnover, growth, and poverty reduction. Three of them contrast China with the United States or the West, and two name the Communist Party explicitly. The State Department videos vary more in form, from narration to testimonials, and only one refers, in general terms, to authoritarian governments. With four videos per country, no single feature can be credibly linked to persuasiveness, and the table does not reveal one that cleanly sorts the videos by their effects. It does suggest candidate features for a designed experiment. Explicit references to the Communist Party, for example, appear in the weakest CGTN video and in the weaker of the two economic videos, under the mapping described in the table note.
 
-The data record the identifiers of the two videos each respondent saw. Cross-tabulating them reveals the assignment rule.
+\begin{table}[p]
+\centering
+\caption{The eight treatment videos}
+\label{tab:videocontent}
+\footnotesize
+\setlength{\tabcolsep}{4pt}
+\renewcommand{\arraystretch}{1.2}
+\begin{tabular}{>{\raggedright\arraybackslash}p{3.4cm}>{\raggedright\arraybackslash}p{3.6cm}>{\raggedright\arraybackslash}p{5.6cm}c}
+\toprule
+Video & Main argument & Evidence and framing & Effect vs.\ \vid{pol2} \\
+\midrule
+\multicolumn{4}{l}{\emph{CGTN}} \\
+\vid{china\_pol1}: ``Selection and election: How China chooses its leaders'' (2018) & China selects leaders by merit, so competence rather than regime type should define legitimacy & History of the civil service exam; top leaders' records running provinces; contrasts China with Western ``showmanship'' and criticizes two US presidents by name. Features scholar Zhang Weiwei. & 0.48 / 0.54 \\
+\vid{china\_pol2}: ``China's whole-process people's democracy'' (2021) & Party promotion is merit-based and leadership turnover is high & Civil service exam and promotion ladder; 62\% turnover of the Central Committee every five years versus about 10\% or less per election in the US Congress. Names the Communist Party. Features ``Dr.\ Kuhn.'' & ref. \\
+\vid{china\_econ1}: ``What is the unique model behind China's rapid rise?'' (2018) & A pragmatic, people-centered development model has succeeded where the Western model has faltered & Largest economy by purchasing power parity; 700 million lifted out of poverty; Ipsos survey in which 90\% of Chinese and 37\% of Americans are satisfied with their country's direction; Western financial crisis. Features scholar Zhang Weiwei. & 0.60 / 0.97 \\
+\vid{china\_econ2}: ``CPC's governance experience worth emulating: experts'' (2021) & Under Party leadership, China has grown and eradicated poverty, a model for developing countries & Second-largest economy; poverty eradication; the Party's centenary. Names the Communist Party; no reference to the United States. Features overseas experts. & 0.45 / 0.70 \\
+\midrule
+\multicolumn{4}{l}{\emph{US State Department}} \\
+\vid{us\_pol1}: ``American Protests and the First Amendment'' (2020) & The United States protects free expression and defends it abroad & Constitutional freedoms of speech, press, assembly, and petition; criticizes censorship by authoritarian governments. Narration. & $-$0.07 / $-$0.21 \\
+\vid{us\_pol2}: ``Diversity in Team USA'' (2021) & Diversity and immigration are national strengths & Team USA athletes; immigrants from nearly every country. Narration. & ref. \\
+\vid{us\_econ1}: ``Foreign Direct Investment in the U.S.\ Is a Win-Win'' (2019) & The United States is the largest and most stable market for foreign investment & \$18 trillion GDP and 325 million consumers; a Japanese firm's \$46 million plant in Kentucky. Testimonials from officials and executives. & $-$0.02 / $-$0.38 \\
+\vid{us\_econ2}: ``How does the U.S.\ help inventors and entrepreneurs?'' (2017) & The United States is the best place to start a business and protect ideas & Rankings for entrepreneurship and ease of doing business; intellectual property protection. Second-person narration with on-screen text. & $-$0.02 / $-$0.33 \\
+\bottomrule
+\end{tabular}
+\tablenote{\emph{Note:} Titles and years are from the video corpora in the replication package (\texttt{cgtn.csv} and \texttt{shareamerica.csv}, rows marked as treatments); featured speakers are from the video descriptions in the same files. Arguments and evidence summarize the transcripts in Appendix E of Mattingly et al.\ (2025). I match transcripts to titles by content, and to the data identifiers by the appendix numbering (``Political model 1'' to \vid{pol1}, and so on); the replication package does not state this mapping. Effects are from the Competition arm (Table~\ref{tab:videos}), on the political / economic model, relative to the country's \vid{pol2}. Video durations are not reported.}
+\end{table}
 
-\paragraph{China and USA arms.} The paper states that respondents in these arms ``were randomly assigned at least one video from the pool of videos about the country's political model, and then randomly assigned a second video about either the political or economic model.'' In the data, the first video variable is drawn roughly uniformly from all four of a country's videos, and the second is then fixed: it is \vid{pol2} unless the first video is \vid{pol2}, in which case it is \vid{pol1} (Table~\ref{tab:assignment}). This rule satisfies the paper's guarantee of at least one political video, but it means that every respondent in the China arm saw \vid{china\_pol2}, every respondent in the USA arm saw \vid{us\_pol2}, and \vid{pol1} was never paired with an economic video. Only the \emph{companion} of \vid{pol2} was randomized: \vid{pol1} for about half of respondents, and one of the two economic videos for a quarter each.
+\subsection{Within-Arm Randomization}
+\label{sec:assignment}
+
+The data record the identifiers of the two videos each respondent saw. Cross-tabulating them reveals the structure of the within-arm randomization.
+
+\paragraph{China and USA arms.} Table~\ref{tab:assignment} shows that the first video (\vid{video1}) was drawn with roughly equal probability from all four of the country's videos. The second (\vid{video2}) was not drawn at random: it is always \vid{pol2}, unless \vid{pol2} was the first draw, in which case it is \vid{pol1}. This rule satisfies the paper's requirement that every respondent see at least one political video, but not its description of the second video as randomly drawn from either the political or the economic pool (Mattingly et al.\ 2025, footnote 9): it fixes \emph{which} political video. As a result, every respondent in the China arm saw \vid{china\_pol2}, and every respondent in the USA arm saw \vid{us\_pol2}. The randomized \emph{companion} of \vid{pol2} is \vid{pol1} for about half of respondents and one of the two economic videos for about a quarter each. Comparing respondents whose companion was economic with those whose companion was \vid{pol1} therefore estimates the causal effect of replacing \vid{pol1} with an economic video, holding \vid{pol2} fixed. The cost is that the separate effect of \vid{pol2} cannot be identified in these arms.
 
 \begin{table}[ht]
 \centering
-\caption{Video assignment in the China and USA arms}
+\caption{Video pairs in the single-country arms}
 \label{tab:assignment}
-\begin{tabular}{llr@{\hspace{2.5em}}llr}
+\begin{tabular}{llrrlrr}
 \toprule
-\multicolumn{3}{c}{China arm} & \multicolumn{3}{c}{USA arm} \\
-\cmidrule(lr){1-3}\cmidrule(lr){4-6}
-First variable & Second variable & $n$ & First variable & Second variable & $n$ \\
+\multicolumn{3}{c}{China arm} & & \multicolumn{3}{c}{USA arm} \\
+\cmidrule(lr){1-3}\cmidrule(lr){5-7}
+\vid{video1} & \vid{video2} & $N$ & & \vid{video1} & \vid{video2} & $N$ \\
 \midrule
-\vid{china\_econ1} & \vid{china\_pol2} & 415 & \vid{us\_econ1} & \vid{us\_pol2} & 411 \\
-\vid{china\_econ2} & \vid{china\_pol2} & 429 & \vid{us\_econ2} & \vid{us\_pol2} & 383 \\
-\vid{china\_pol1}  & \vid{china\_pol2} & 396 & \vid{us\_pol1}  & \vid{us\_pol2} & 385 \\
-\vid{china\_pol2}  & \vid{china\_pol1} & 382 & \vid{us\_pol2}  & \vid{us\_pol1} & 386 \\
+\vid{china\_econ1} & \vid{china\_pol2} & 415 & & \vid{us\_econ1} & \vid{us\_pol2} & 411 \\
+\vid{china\_econ2} & \vid{china\_pol2} & 429 & & \vid{us\_econ2} & \vid{us\_pol2} & 383 \\
+\vid{china\_pol1}  & \vid{china\_pol2} & 396 & & \vid{us\_pol1}  & \vid{us\_pol2} & 385 \\
+\vid{china\_pol2}  & \vid{china\_pol1} & 382 & & \vid{us\_pol2}  & \vid{us\_pol1} & 386 \\
 \bottomrule
 \end{tabular}
-\tablenote{\emph{Note:} Randomized respondents. No other combinations occur. The raw survey exports, including incomplete responses, show the same rule.}
+\tablenote{\emph{Note:} No other pairs occur: no respondent saw two economic videos, or an economic video together with \vid{pol1}.}
 \end{table}
 
-Holding \vid{pol2} fixed, comparing respondents whose companion was economic with those whose companion was political estimates the causal effect of substituting economic for political content. The cost is that the separate effect of \vid{pol2} cannot be identified in these arms.
+\paragraph{Competition arm.} Here one US video and one Chinese video were each drawn from all four of the country's videos, independently of each other. All sixteen combinations occur, each with 79 to 107 respondents. A chi-squared test does not reject independence of the two assignments ($\chi^2 = 10.42$, $df = 9$, $p = 0.32$). This four-by-four factorial identifies the effect of each Chinese video relative to the others while the US video is balanced by randomization, and vice versa. It is also the only place in the experiment where respondents saw a single CGTN video, so it provides the cleanest comparison of individual messages.
 
-\paragraph{Competition arm.} One US video and one Chinese video were each drawn from all four of the country's videos, independently of each other. All sixteen combinations occur, each with 79 to 107 respondents, and a chi-squared test does not reject independence of the two assignments ($\chi^2 = 10.42$, $df = 9$, $p = 0.32$). This four-by-four factorial identifies the effect of each Chinese video relative to the others while the US video is balanced by randomization, and vice versa.
-
-\paragraph{Video order.} The codebook labels the cleaned first video variable as the ``First Video Watched by Respondent.'' The paper states that in the Competition arm the order of the two countries' videos was ``randomized with equal probability.'' In the data, however, the first video variable records the US video for every Competition-arm respondent. These three facts cannot all hold. Either the variables record videos by slot rather than by display order, or the US video always played first. The replication package contains no display-order field or survey flow file, so the public data cannot settle the question. I therefore do not study order effects, and I check whether the companion-video comparison is robust to the possibility that the first variable records the first video shown.
+\paragraph{Display order.} The paper reports that the order of the two countries' videos in the Competition arm was randomized. I had planned to study order effects, but the public data do not record display order.\footnote{The codebook labels the cleaned versions of \vid{video1} and \vid{video2} as the ``first'' and ``second'' video watched. Read literally, this would imply that the US video always played first in the Competition arm, where \vid{video1} is always the US video; the paper, however, states that the order of the two countries was randomized. The public files cannot resolve this discrepancy, because they contain no display-order field and no survey flow. I follow the paper and treat the two variables as identifying which videos were shown, not their order.} Order effects therefore cannot be studied. Section~\ref{sec:content} checks that the comparison of economic and political content is not driven by position.
 
 \subsection{Estimation}
+
+For the Competition arm, I regress each outcome on indicators for each video,
+\begin{equation}
+Y_i = \alpha + \sum_{v} \theta_v\,\text{ChinaVideo}_{vi} + \sum_{u} \phi_u\,\text{USVideo}_{ui} + \mathbf{X}_i'\boldsymbol{\gamma} + \varepsilon_i,
+\label{eq:videos}
+\end{equation}
+where $v \in \{\vid{econ1}, \vid{econ2}, \vid{pol1}\}$ indexes the Chinese videos and $u$ the US videos, each relative to its country's \vid{pol2}. I use \vid{pol2} as the reference because it is the video held fixed in the single-country arms. A Wald test that the three $\theta_v$ are jointly zero tests whether the four Chinese videos are equally persuasive.
 
 For the China and USA arms, I estimate within each arm
 \begin{equation}
 Y_i = \alpha + \delta\,\text{EconCompanion}_i + \mathbf{X}_i'\boldsymbol{\gamma} + \varepsilon_i,
 \label{eq:companion}
 \end{equation}
-where $\delta$ is the effect of an economic rather than political companion video. I estimate Equation~\ref{eq:companion} for the two primary outcomes and for each of the eight perception items the authors use to study mechanisms, asking China-arm respondents about China and USA-arm respondents about the United States. For the Competition arm, I estimate
-\begin{equation}
-Y_i = \alpha + \theta_C\,\text{ChinaEcon}_i + \theta_U\,\text{USEcon}_i + \mathbf{X}_i'\boldsymbol{\gamma} + \varepsilon_i,
-\label{eq:types}
-\end{equation}
-both as written and with an interaction between the two indicators, and a version with indicators for each specific video, using \vid{pol2} as the reference for each country because it is the video held fixed in the single-country arms. All models use the same covariates and HC2 standard errors as the replication. Within each family of tests I report $p$-values adjusted by the Holm (1979) and Benjamini--Hochberg (1995) procedures, which the authors also use. For the single-country comparisons I report the minimum detectable effect (MDE) at 80 percent power and a two-sided 5 percent test, $\text{MDE} = (z_{0.975} + z_{0.80}) \times \text{SE} \approx 2.8 \times \text{SE}$.
+where $\delta$ is the effect of replacing \vid{pol1} with an economic video as the companion of \vid{pol2}. The Competition-arm analogue is $\tfrac{1}{2}(\theta_{\text{econ1}} + \theta_{\text{econ2}}) - \theta_{\text{pol1}}$, the difference between the average economic video and \vid{pol1}. Both contrasts compare the same content, in independent samples and under different designs.
 
-\subsection{Economic versus Political Content}
+All models use the same covariates and HC2 standard errors as the replication. Within each family of tests I report $p$-values adjusted by the Holm (1979) and Benjamini--Hochberg (1995) procedures, which the authors also use. I report the minimum detectable effect (MDE) at 80 percent power and a two-sided 5 percent test, $\text{MDE} = (z_{0.975} + z_{0.80}) \times \text{SE} \approx 2.8 \times \text{SE}$.
 
-Table~\ref{tab:companion} and Figure~\ref{fig:companion} report the companion-video comparisons. In the China arm, replacing a second political video with an economic one raises preference for China's economic model by 0.26 points (SE 0.08; Holm-adjusted $p = 0.004$), nearly a third of the full China-arm effect on that outcome. The same substitution has no detectable effect on preference for China's political model: the estimate is 0.01 (SE 0.08), with a confidence interval from $-0.14$ to $0.16$. Given an MDE of 0.21, the data rule out large differences, though not modest ones. In the USA arm, neither difference is distinguishable from zero.
+\subsection{Results: Individual Messages Differ}
+\label{sec:messages}
 
-\begin{table}[ht]
-\centering
-\caption{Effect of an economic rather than political companion video}
-\label{tab:companion}
-\begin{tabular}{llcccccc}
-\toprule
-Arm & Outcome & Estimate & SE & Holm $p$ & BH $p$ & MDE & $N$ \\
-\midrule
-China & Political model & 0.009 & 0.076 & 1.000 & 0.905 & 0.214 & 1,527 \\
-China & Economic model  & 0.256 & 0.077 & 0.004 & 0.004 & 0.216 & 1,526 \\
-USA   & Political model & 0.076 & 0.053 & 0.456 & 0.304 & 0.149 & 1,489 \\
-USA   & Economic model  & 0.011 & 0.065 & 1.000 & 0.905 & 0.182 & 1,487 \\
-\bottomrule
-\end{tabular}
-\tablenote{\emph{Note:} Each row is a separate OLS regression within one arm (Equation~\ref{eq:companion}), with country fixed effects, covariates, and HC2 standard errors. Positive values mean more favorable to China. $p$-values are adjusted across the four tests. MDE: minimum detectable effect at 80\% power, $\alpha = 0.05$.}
-\end{table}
+Figure~\ref{fig:videos} and Appendix Table~\ref{tab:videos} report the effect of each video in the Competition arm. Relative to \vid{china\_pol2}, each of the other three CGTN videos raises preference for China's political model by between 0.45 and 0.60 points, and for its economic model by between 0.54 and 0.97 points. The four CGTN videos are clearly not equally persuasive: the joint test rejects equality for both the political model ($\chi^2_3 = 34.9$) and the economic model ($\chi^2_3 = 77.0$; both $p < 0.001$). The ranges, 0.60 and 0.97 points, are larger than the Competition arm's overall effects on the two outcomes (0.36 and 0.28); on the economic model, the range is as large as the China arm's effect (0.87).
 
 \begin{figure}[ht]
 \centering
-\includegraphics[width=0.8\linewidth]{fig2_companion.pdf}
-\caption{Effect of an economic rather than political companion video within the China and USA arms. Points are OLS estimates; lines are unadjusted 95\% confidence intervals.}
-\label{fig:companion}
+\includegraphics[width=\linewidth]{fig2_competition_videos.pdf}
+\caption{Effect of each video relative to its country's \vid{pol2} video in the Competition arm, where each respondent saw one Chinese and one US video. Chinese-video estimates control for the US video and vice versa. Lines are unadjusted 95\% confidence intervals.}
+\label{fig:videos}
 \end{figure}
 
-\paragraph{Robustness to video position.} If the first video variable records the first video shown, the comparison above is partly confounded with position: economic companions always played before \vid{pol2}, whereas \vid{pol1} played before \vid{pol2} for only half of the political-companion group. Table~\ref{tab:position} addresses this in two ways. First, I restrict each arm to respondents for whom \vid{pol2} is the second video, so that position is identical across the two groups. The China-arm effect on the economic model is essentially unchanged (0.24, SE 0.10), and the effect on the political model remains close to zero. Second, among respondents who saw two political videos, I compare those who saw \vid{pol2} first with those who saw it second. None of the four differences is distinguishable from zero. The main finding therefore holds under either reading of the video variables.
+The differences do not reduce to content type. The weakest CGTN video is political (\vid{china\_pol2}), but the other political video, \vid{china\_pol1} (0.48), is about as persuasive about the political model as the economic video \vid{china\_econ2} (0.45). A comparison of economic with political CGTN videos that pools the two political videos (Appendix Table~\ref{tab:types}) therefore mixes a content difference with the weakness of one particular video.
+
+The US videos look different. On the political model, the four State Department videos are statistically indistinguishable (joint $p = 0.94$; range 0.07 points). On the economic model, they differ ($p = 0.005$; Holm-adjusted $p = 0.010$), with both economic videos pulling respondents further toward the US model than \vid{us\_pol2}. Variation across messages, in other words, is concentrated in CGTN content.
+
+\subsection{Results: Economic versus Political Content}
+\label{sec:content}
+
+Table~\ref{tab:content} and Figure~\ref{fig:content} compare economic content with \vid{pol1} in both designs. For CGTN, the two designs agree closely. On preference for China's economic model, an economic video outperforms \vid{china\_pol1} by 0.26 points in the China arm (SE 0.08) and by 0.30 points in the Competition arm (SE 0.10); both survive the Holm correction across the eight tests in the table. On preference for China's political model, the differences are 0.01 and 0.05 points, with confidence intervals of roughly $\pm 0.15$ and $\pm 0.19$. Given MDEs of 0.21 and 0.27, the data rule out large differences on the political outcome, though not modest ones; in particular, the confidence intervals exclude an economic-video disadvantage larger than 0.14 points in either design.
 
 \begin{table}[ht]
 \centering
-\caption{Robustness of the companion-video comparison to video position}
-\label{tab:position}
+\caption{Economic video versus \vid{pol1} in two designs}
+\label{tab:content}
 \begin{tabular}{llcccc}
 \toprule
- & & \multicolumn{2}{c}{\emph{pol2} second for all} & \multicolumn{2}{c}{\emph{pol2} first vs.\ second} \\
- & & \multicolumn{2}{c}{(economic companion effect)} & \multicolumn{2}{c}{(two political videos)} \\
+ & & \multicolumn{2}{c}{Political model} & \multicolumn{2}{c}{Economic model} \\
 \cmidrule(lr){3-4}\cmidrule(lr){5-6}
-Arm & Outcome & Estimate (SE) & $N$ & Estimate (SE) & $N$ \\
+Source & Design & Estimate (SE) & Holm $p$ & Estimate (SE) & Holm $p$ \\
 \midrule
-China & Political model & $-$0.043 (0.095) & 1,174 & $-$0.117 (0.114) & 732 \\
-China & Economic model  & 0.237 (0.095) & 1,173 & $-$0.028 (0.115) & 732 \\
-USA   & Political model & 0.076 (0.066) & 1,120 & $-$0.020 (0.074) & 742 \\
-USA   & Economic model  & 0.073 (0.079) & 1,119 & 0.097 (0.092) & 741 \\
+CGTN & China arm       & 0.009 (0.076) & 1.000 & 0.256 (0.077) & 0.007 \\
+CGTN & Competition arm & 0.051 (0.096) & 1.000 & 0.302 (0.100) & 0.018 \\
+State Dept. & USA arm         & 0.076 (0.053) & 0.895 & 0.011 (0.065) & 1.000 \\
+State Dept. & Competition arm & 0.047 (0.093) & 1.000 & $-$0.142 (0.099) & 0.895 \\
 \bottomrule
 \end{tabular}
-\tablenote{\emph{Note:} OLS with country fixed effects, covariates, and HC2 standard errors. Left: Equation~\ref{eq:companion} estimated among respondents whose second video variable is \vid{pol2}. Right: among respondents who saw two political videos, the difference between those whose first video variable is \vid{pol2} and those whose second is. Unadjusted $p$-values for the right-hand estimates range from 0.29 to 0.81.}
+\tablenote{\emph{Note:} Single-country arms: economic versus \vid{pol1} companion of \vid{pol2} (Equation~\ref{eq:companion}; $N \approx 1{,}490$--$1{,}530$). Competition arm: average of the two economic videos minus \vid{pol1}, from Equation~\ref{eq:videos} ($N \approx 1{,}460$). All models include country fixed effects and covariates, with HC2 standard errors. Positive values mean more favorable to China, so a negative State Department estimate means the economic video is more persuasive. $p$-values are adjusted across the eight tests.}
 \end{table}
-
-\paragraph{Relation to the authors' video-type analysis.} The authors' replication code contains an exploratory version of this comparison that is not reported in the paper or its appendix. It regresses each outcome on the type of the first video variable (Chinese economic, Chinese political, US economic, US political, or control) with the same covariates. Its Chinese economic-minus-political contrast is 0.25 (SE 0.08) for the economic model and 0.00 for the political model, essentially identical to the estimates in Table~\ref{tab:companion}. The specification has one feature worth noting. Because the first video variable always records the US video in the Competition arm, Competition-arm respondents are coded as having seen a US video and are pooled with the USA arm. The resulting US coefficients for the political model, $-0.003$ and $-0.068$, average a negative effect in the USA arm with a positive effect in the Competition arm. Giving the two arms separate categories, in line with the paper's own description of the design as having six groups including ``China + US,'' recovers effects of $-0.39$ and $-0.47$ for the USA arm and $+0.39$ and $+0.34$ for the Competition arm (Appendix Table~\ref{tab:authors}).
-
-\subsection{Which Perceptions Does Content Change?}
-
-The authors argue that CGTN persuades by improving perceptions of China's performance. If economic content persuades within its own domain, it should be economic videos that improve perceptions that China delivers growth. Figure~\ref{fig:mechanisms} shows that this is not the case. In the China arm, an economic companion video has no detectable effect on perceptions that China delivers economic growth ($-0.04$, SE 0.06). Instead, it improves perceptions that China selects competent leaders by 0.26 points \emph{less} than a political companion video (SE 0.07; Holm-adjusted $p = 0.002$ across the eight items). No other difference survives adjustment. In the USA arm, the economic companion video raises perceptions of US growth by 0.13 points (SE 0.06), but this estimate does not survive adjustment (Holm $p = 0.14$).
 
 \begin{figure}[ht]
 \centering
-\includegraphics[width=\linewidth]{fig4_companion_mechanisms.pdf}
-\caption{Effect of an economic rather than political companion video on perceptions of the arm's country, by item. Items above the line form the authors' performance dimension; items below form the democracy dimension. Lines are unadjusted 95\% confidence intervals.}
+\includegraphics[width=0.9\linewidth]{fig3_content_type.pdf}
+\caption{Economic video versus \vid{pol1} in the single-country arms (companion of \vid{pol2}) and the Competition arm (single video). Points are OLS estimates; lines are unadjusted 95\% confidence intervals.}
+\label{fig:content}
+\end{figure}
+
+The pattern for CGTN is asymmetric. If each type of content persuaded mainly within its own domain, political videos should outperform economic ones on the political outcome. They do not detectably do so, while economic videos clearly outperform political ones on the economic outcome. This is consistent with the authors' performance-legitimacy argument, in which evidence of economic success also makes the political system that produced it look more attractive. Both designs, however, identify relative effects. The China-arm contrast holds \vid{china\_pol2} fixed, and the Competition-arm contrast holds a US video fixed, so neither shows how much an economic video moves views of China's political model compared with seeing no CGTN video at all.\footnote{A bound is available under a weak assumption. If \vid{china\_pol2}, a pro-China video, does not reduce preference for China's political model, then each economic video's effect relative to watching the US video alone is at least its effect relative to \vid{china\_pol2}: 0.45 and 0.60 points (Table~\ref{tab:videos}). The assumption cannot be tested with these data.}
+
+For State Department videos, neither difference is distinguishable from zero in either design. The point estimates on the economic outcome diverge somewhat (0.01 in the USA arm and $-0.14$ in the Competition arm). Given standard errors of 0.07 to 0.10, this gap could be noise, or US economic messages could matter more when they compete directly with Chinese ones. The data cannot distinguish between these explanations.
+
+The single-country estimates are not driven by video position. If, as the codebook states, \vid{video1} is the first video shown, economic companions always played before \vid{pol2}, while \vid{pol1} did so only half the time. Among China-arm respondents for whom \vid{china\_pol2} was the second video, the economic-versus-\vid{pol1} contrast is $-0.04$ (SE 0.09) on the political model and 0.24 (SE 0.10) on the economic model, close to the full-sample estimates. Among respondents who saw two political videos, the order of \vid{pol1} and \vid{pol2} makes no detectable difference ($-0.12$, SE 0.11, and $-0.03$, SE 0.11). The USA arm shows the same pattern (Appendix Table~\ref{tab:position}). In the Competition arm, the Chinese video occupies the same position for every respondent under either reading of the codebook, so comparisons among Chinese videos there are unaffected.
+
+\subsection{Exploratory Results: What Do the Videos Change?}
+
+The authors measure eight perceptions of China after treatment, on seven-point agreement scales, and use them to show that CGTN videos work mainly through perceived performance. I apply the same contrasts to these perceptions. Because the perceptions are themselves outcomes of treatment rather than measured mediators, these results describe what each kind of video changes, not a causal pathway, and I treat them as exploratory.
+
+Figure~\ref{fig:mechanisms} shows the economic-versus-\vid{pol1} contrast for each perception. Two results stand out, and both replicate across the two designs. First, economic videos do not raise belief that China's government delivers economic growth any more than \vid{china\_pol1} does: the differences are $-0.03$ (SE 0.06) and $-0.08$ (SE 0.07). This belief is already the most widely held of the eight in the control group (mean 5.44; 55 percent agree or strongly agree). A ceiling is not the whole explanation, however: beliefs that the United States delivers growth are about as high at baseline (mean 5.58), yet in the USA arm an economic companion raises them by 0.13 points (SE 0.06; $p = 0.018$, or 0.14 after Holm correction across the eight items). Second, \vid{china\_pol1} raises belief that China's political system selects competent leaders much more than the economic videos do, by 0.26 (SE 0.07) and 0.46 (SE 0.09) points; both differences survive Holm correction across the 16 tests. None of the other contrasts does.
+
+\begin{figure}[ht]
+\centering
+\includegraphics[width=0.95\linewidth]{fig4_mechanisms.pdf}
+\caption{Economic video versus \vid{china\_pol1} on perceptions of China (1 = strongly disagree, 7 = strongly agree). Item wording follows Appendix D.2 of the original paper. Points are OLS estimates with country fixed effects and covariates; lines are unadjusted 95\% confidence intervals.}
 \label{fig:mechanisms}
 \end{figure}
 
-One plausible reason the economic videos do not move growth perceptions is that there is little room to move them. In the control group, 52 percent of respondents already rate China's growth performance at 6 or 7 on the seven-point scale, compared with 32 percent for leadership competence. The economic videos may raise preference for China's economic model by reinforcing a belief respondents already hold rather than by changing it, while the political video, which is the companion in the comparison group, appears to convey something new about China's leadership. This interpretation is speculative, since the experiment was not designed to separate these channels.
+The perceptions therefore do not track the outcome differences in a simple way. The political video that most improves perceived leadership competence is no more persuasive about China's political model than the economic videos, and the economic videos' advantage on the economic model is not accompanied by larger changes in beliefs about growth. Several explanations are consistent with this pattern. Economic videos may prime China's economic record, which respondents already rate highly, when they evaluate its economic model (Iyengar and Kinder 1987). They may instead teach respondents about aspects of China's economy that the survey does not measure, which would be learning rather than priming (Lenz 2009). And beliefs about growth respond to political as well as economic videos: relative to \vid{china\_pol2}, all three other CGTN videos raise them, by 0.21 to 0.33 points. The data cannot distinguish among these explanations.
 
-\subsection{Individual Videos in Competition}
+Finally, the perceptions help explain why \vid{china\_pol2} is the weakest CGTN video. Relative to \vid{china\_pol2}, all three other CGTN videos raise all eight perceptions (24 of 24 point estimates positive, ranging from 0.14 to 0.77; Appendix Table~\ref{tab:mechvideos}). Its weakness is general rather than confined to one dimension, which points to features of the video itself, such as its framing or production, rather than its topic: \vid{china\_pol1} covers much the same ground, merit-based selection of leaders, and is far more persuasive (Table~\ref{tab:videocontent}).
 
-Table~\ref{tab:types} reports the type-level estimates from the Competition arm. A Chinese economic video, compared with a Chinese political one, raises preference for China's political model by 0.28 points and for its economic model by 0.56 points; both survive the Holm correction. On the US side, economic and political videos have the same effect on the political outcome, but a US economic video pulls respondents 0.24 points further toward the US economic model. The interaction terms are negative but imprecise and not significant.
+\section{Discussion}
 
-\begin{table}[ht]
+The original study shows that Chinese state media can shift global opinion. The extension shows that \emph{what} it says shapes how much opinion moves. Three conclusions follow.
+
+First, the persuasive effect of state media depends on the specific message. When respondents saw a single CGTN video, the most and least persuasive of four differ by about 0.6 points on the political model and nearly 1 point on the economic model, more than the Competition arm's overall effects. These differences are not explained by broad content categories, and they are much larger for CGTN than for State Department videos. Estimates based on a handful of fixed stimuli are thus estimates for those stimuli, and generalizing to ``CGTN content'' requires sampling more of it (Wells and Windschitl 1999; Clifford, Leeper, and Rainey 2023).
+
+Second, economic content compares well with political content. Across two independent designs, CGTN's economic videos are not detectably less persuasive than its stronger political video about China's political model, and they are more persuasive about its economic model. This pattern is consistent with the authors' performance-legitimacy account, although both designs identify relative rather than absolute effects. The perception measures do not show the economic advantage running through larger changes in beliefs about growth; whether economic messages work by priming existing beliefs or by teaching unmeasured ones remains open.
+
+Third, the implementation of the design matters for interpreting the headline estimate. Every respondent in the China arm saw \vid{china\_pol2}, a consequence of how the requirement of at least one political video was implemented rather than of the design as described. The China-arm effect is a valid estimate of the effect of the bundles that were actually shown. Because \vid{china\_pol2} was the least persuasive CGTN video in the Competition arm, other combinations of CGTN content might have produced larger effects. This is a hypothesis rather than a finding: the video was weakest when paired with a US video, and it need not be weakest when paired with another CGTN video, since videos may complement or substitute for one another. No respondent in the China arm saw a pair without it.
+
+\paragraph{Limitations.} The extension relies on four videos per country. ``Economic'' and ``political'' videos also differ in style, speakers, and subject (Table~\ref{tab:videocontent}), so contrasts between types are best read as contrasts between these specific videos rather than between content categories in general. Within-arm subsamples are a quarter to a half the size of the arms, so MDEs of 0.15 to 0.28 points mean that modest differences may go undetected. The perception measures are post-treatment outcomes and cover only a few beliefs about China's economy, so they cannot distinguish priming from learning. The always-shown \vid{pol2} pattern is inferred from the data, consistent with the paper's footnote 9, because the replication package does not include the survey flow; the mapping between the appendix transcripts and the data identifiers in Table~\ref{tab:videocontent} is likewise inferred. Display order is not recorded, which rules out the order-effects analysis I originally planned; the position check in Section~\ref{sec:content} and the agreement between the two designs suggest that position does not drive the content comparisons.
+
+\paragraph{Future directions.} The video-level variation documented here invites a direct study of message features. Researchers could sample a larger number of CGTN videos, code them for performance claims, explicit references to the Communist Party, criticism of the United States, use of statistics, and production quality, and randomize those features in a new experiment. Randomizing pairs of CGTN videos would also show whether messages complement or substitute for one another, and thus whether the paper's headline estimate is conservative. Measuring both beliefs and the weight respondents place on each dimension would distinguish learning from priming. Recovering the display order from the original survey platform would also make it possible to test whether the first or the last message has the advantage when Chinese and US narratives compete, a question with direct relevance to how international broadcasters compete for audiences.
+
+\section*{Data and Code}
+
+All code is available at \url{https://github.com/maeve5ood/mattingly-china-model-replication}. A single command (\texttt{python run\_all.py}) reproduces every table and figure from the authors' replication data (Harvard Dataverse, \url{https://doi.org/10.7910/DVN/CQ4FZR}).
+
+\section*{References}
+
+\begin{description}\setlength\itemsep{2pt}\small
+\item Benjamini, Yoav, and Yosef Hochberg. 1995. ``Controlling the False Discovery Rate: A Practical and Powerful Approach to Multiple Testing.'' \emph{Journal of the Royal Statistical Society: Series B} 57(1): 289--300.
+\item Carter, Erin Baggott, and Brett L.\ Carter. 2023. \emph{Propaganda in Autocracies: Institutions, Information, and the Politics of State Media}. Cambridge: Cambridge University Press.
+\item Clifford, Scott, Thomas J.\ Leeper, and Carlisle Rainey. 2023. ``Generalizing Survey Experiments Using Topic Sampling: An Application to Party Cues.'' \emph{Political Behavior}. \url{https://doi.org/10.1007/s11109-023-09870-1}.
+\item Coppock, Alexander. 2023. \emph{Persuasion in Parallel: How Information Changes Minds about Politics}. Chicago: University of Chicago Press.
+\item Hewitt, Luke, David Broockman, Alexander Coppock, Ben M.\ Tappin, James Slezak, Valerie Coffman, Nathaniel Lubin, and Mohammad Hamidian. 2024. ``How Experiments Help Campaigns Persuade Voters: Evidence from a Large Archive of Campaigns' Own Experiments.'' \emph{American Political Science Review} 118(4): 2021--39.
+\item Holm, Sture. 1979. ``A Simple Sequentially Rejective Multiple Test Procedure.'' \emph{Scandinavian Journal of Statistics} 6(2): 65--70.
+\item Iyengar, Shanto, and Donald R.\ Kinder. 1987. \emph{News That Matters: Television and American Opinion}. Chicago: University of Chicago Press.
+\item Lenz, Gabriel S. 2009. ``Learning and Opinion Change, Not Priming: Reconsidering the Priming Hypothesis.'' \emph{American Journal of Political Science} 53(4): 821--37.
+\item Mattingly, Daniel C., Trevor Incerti, Changwook Ju, Colin Moreshead, Seiki Tanaka, and Hikaru Yamagishi. 2025. ``Chinese State Media Persuades a Global Audience That the `China Model' Is Superior: Evidence from a 19-Country Experiment.'' \emph{American Journal of Political Science} 69(3): 1029--46. \url{https://doi.org/10.1111/ajps.12887}.
+\item Samii, Cyrus, and Peter M.\ Aronow. 2012. ``On Equivalencies between Design-Based and Regression-Based Variance Estimators for Randomized Experiments.'' \emph{Statistics \& Probability Letters} 82(2): 365--70.
+\item Wells, Gary L., and Paul D.\ Windschitl. 1999. ``Stimulus Sampling and Social Psychological Experimentation.'' \emph{Personality and Social Psychology Bulletin} 25(9): 1115--25.
+\end{description}
+
+\appendix
+\section*{Appendix}
+\renewcommand{\thetable}{A\arabic{table}}
+\setcounter{table}{0}
+
+\subsection*{A. Additional Results}
+
+\begin{table}[H]
+\centering
+\caption{Effect of each video relative to its country's \vid{pol2}, Competition arm}
+\label{tab:videos}
+\begin{tabular}{lcccccc}
+\toprule
+ & \multicolumn{3}{c}{Political model} & \multicolumn{3}{c}{Economic model} \\
+\cmidrule(lr){2-4}\cmidrule(lr){5-7}
+Video & Estimate (SE) & Holm $p$ & BH $p$ & Estimate (SE) & Holm $p$ & BH $p$ \\
+\midrule
+\vid{china\_econ1} & 0.605 (0.110) & $<$0.001 & $<$0.001 & 0.970 (0.115) & $<$0.001 & $<$0.001 \\
+\vid{china\_econ2} & 0.451 (0.109) & $<$0.001 & $<$0.001 & 0.704 (0.114) & $<$0.001 & $<$0.001 \\
+\vid{china\_pol1}  & 0.477 (0.110) & $<$0.001 & $<$0.001 & 0.536 (0.115) & $<$0.001 & $<$0.001 \\
+\vid{us\_econ1}    & $-$0.015 (0.107) & 1.000 & 0.885 & $-$0.384 (0.114) & 0.004 & 0.001 \\
+\vid{us\_econ2}    & $-$0.024 (0.113) & 1.000 & 0.885 & $-$0.326 (0.119) & 0.031 & 0.009 \\
+\vid{us\_pol1}     & $-$0.067 (0.108) & 1.000 & 0.644 & $-$0.213 (0.116) & 0.262 & 0.087 \\
+\midrule
+Joint test, CGTN & \multicolumn{3}{c}{$\chi^2_3 = 34.9$, $p < 0.001$} & \multicolumn{3}{c}{$\chi^2_3 = 77.0$, $p < 0.001$} \\
+Joint test, US   & \multicolumn{3}{c}{$\chi^2_3 = 0.43$, $p = 0.94$} & \multicolumn{3}{c}{$\chi^2_3 = 12.9$, $p = 0.005$} \\
+$N$ & \multicolumn{3}{c}{1,459} & \multicolumn{3}{c}{1,456} \\
+\bottomrule
+\end{tabular}
+\tablenote{\emph{Note:} One regression per outcome (Equation~\ref{eq:videos}), including indicators for the Chinese video (reference \vid{china\_pol2}) and the US video (reference \vid{us\_pol2}), country fixed effects, covariates, and HC2 standard errors. $p$-values are adjusted across all twelve coefficients. Joint tests are Wald tests that a country's three video coefficients are zero.}
+\end{table}
+
+\begin{table}[H]
 \centering
 \caption{Effects of video type in the Competition arm}
 \label{tab:types}
@@ -277,106 +381,79 @@ Chinese econ.\ $\times$ US econ. & $-$0.178 (0.155) & --- & $-$0.253 (0.165) & -
 $N$ & \multicolumn{2}{c}{1,459} & \multicolumn{2}{c}{1,456} \\
 \bottomrule
 \end{tabular}
-\tablenote{\emph{Note:} OLS estimates within the Competition arm (Equation~\ref{eq:types}) with country fixed effects, covariates, and HC2 standard errors. Reference categories are political videos. Holm $p$-values are adjusted across the four main effects. The interaction is exploratory; its unadjusted $p$-values are 0.25 and 0.13.}
+\tablenote{\emph{Note:} OLS estimates within the Competition arm with country fixed effects, covariates, and HC2 standard errors. Reference categories pool the two political videos of each country, so the Chinese estimates partly reflect the weakness of \vid{china\_pol2} (see Section~\ref{sec:messages}). Holm $p$-values are adjusted across the four main effects. The interaction is exploratory; its unadjusted $p$-values are 0.25 and 0.13.}
 \end{table}
 
-The type-level averages, however, hide substantial variation across individual videos (Figure~\ref{fig:videos}; Appendix Table~\ref{tab:videos}). Relative to \vid{china\_pol2}, each of the other three CGTN videos raises preference for China's political model by between 0.45 and 0.61 points. The other political video, \vid{china\_pol1} (0.48), is about as effective as the economic video \vid{china\_econ2} (0.45). The economic-versus-political gap on the political outcome is therefore driven by one weak political video rather than by content type. On the economic outcome, both economic videos (0.97 and 0.70) do outperform \vid{china\_pol1} (0.54). Among US videos, the two economic videos are the most effective at shifting views of the economic model, while the four videos are indistinguishable on the political model.
-
-\begin{figure}[ht]
+\begin{table}[H]
 \centering
-\includegraphics[width=\linewidth]{fig3_competition_videos.pdf}
-\caption{Effect of each video relative to its country's \vid{pol2} video in the Competition arm. Chinese-video estimates control for the US video and vice versa. Lines are unadjusted 95\% confidence intervals.}
-\label{fig:videos}
-\end{figure}
-
-\subsection{Two Designs, One Pattern}
-
-The single-country arms and the Competition arm are independent samples with different designs, so it is informative to compare them. The Competition estimates imply that, relative to \vid{china\_pol1}, the average CGTN economic video changes preference for China's political model by 0.05 points and its economic model by 0.30 points. The corresponding within-China-arm estimates are 0.01 and 0.26. For the US videos, the two designs agree on the political outcome (0.05 versus 0.08) but diverge on the economic outcome ($-0.14$ versus 0.01). These implied contrasts are computed from point estimates without their own standard errors, and individual video coefficients have standard errors of about 0.11, so the comparison is suggestive rather than a formal test. The US discrepancy could be noise, or US economic messages could matter more when they compete directly with Chinese ones.
-
-\section{Discussion}
-
-The original study shows that Chinese state media can shift global opinion. The extension suggests that \emph{what} it says shapes how much opinion moves, and through which perceptions. Three conclusions follow.
-
-First, content persuades within its own domain at the level of model preferences, but not through the most obvious channel. CGTN's economic videos raise preference for China's economic model but not, beyond a second political video, for its political model. Yet they do not improve perceptions of China's growth, which are already high, whereas political content does more to improve perceptions of China's leadership. This refines the performance-legitimacy account: which dimension of performance a message moves depends on what audiences already believe, and the most effective content may be content that tells audiences something new.
-
-Second, individual messages differ substantially, and these differences are not explained by broad content categories. The most and least persuasive CGTN videos in the Competition arm differ by about 0.6 points on the political model and nearly 1 point on the economic model, comparable in size to the paper's main effects. This is consistent with research finding that persuasive effects vary across messages in ways that are hard to predict from their content type (Hewitt et al.\ 2024).
-
-Third, these results bear on the interpretation of the headline estimate. Every respondent in the China arm saw \vid{china\_pol2}, which was the least persuasive CGTN video in the Competition arm. The China-arm effect is a valid estimate of the effect of the bundles that were actually shown. However, it may be conservative relative to other combinations of CGTN content. This is an inference across arms rather than a direct estimate: no respondent in the China arm saw a pair without \vid{china\_pol2}, and the relative strength of videos could differ when they are not paired with a US video.
-
-\paragraph{Limitations.} The extension relies on four videos per country. ``Economic'' and ``political'' videos also differ in length, style, and subject, so contrasts between types are best read as contrasts between these specific videos rather than between content categories in general. Within-arm subsamples are smaller than the arms, so the MDEs of 0.15 to 0.22 points mean that modest differences may go undetected, and the interaction estimates in the Competition arm are too imprecise to be informative. The mechanism results rest on single survey items, examine eight outcomes per arm, and offer only a speculative explanation for the null effect on growth perceptions. Finally, the replication package does not include the survey flow file, so the assignment rule is inferred from the data and the conflict between the codebook and the paper about video order cannot be resolved.
-
-\paragraph{Future directions.} The video-level variation documented here invites a direct study of message features. Following the logic of topic sampling (Clifford, Leeper, and Rainey 2024), a new experiment could draw many CGTN and US messages at random from the corpora the authors assembled, code them for performance claims, criticism of the United States, use of statistics, and production quality, and estimate how these features predict persuasiveness. Recovering the display order from the original survey platform would also make it possible to test whether the first or the last message has the advantage when Chinese and US narratives compete.
-
-\section*{Data and Code}
-
-All code is available at \url{https://github.com/maeve5ood/mattingly-china-model-replication}. A single command (\texttt{python run\_all.py}) reproduces every table and figure from the authors' replication data (Harvard Dataverse, \url{https://doi.org/10.7910/DVN/CQ4FZR}).
-
-\section*{References}
-
-\begin{description}\setlength\itemsep{2pt}\small
-\item Benjamini, Yoav, and Yosef Hochberg. 1995. ``Controlling the False Discovery Rate: A Practical and Powerful Approach to Multiple Testing.'' \emph{Journal of the Royal Statistical Society: Series B} 57(1): 289--300.
-\item Clifford, Scott, Thomas J.\ Leeper, and Carlisle Rainey. 2024. ``Generalizing Survey Experiments Using Topic Sampling: An Application to Party Cues.'' \emph{Political Behavior} 46: 1233--56.
-\item Coppock, Alexander. 2023. \emph{Persuasion in Parallel: How Information Changes Minds about Politics}. Chicago: University of Chicago Press.
-\item Hewitt, Luke, David Broockman, Alexander Coppock, et al.\ 2024. ``How Experiments Help Campaigns Persuade Voters: Evidence from a Large Archive of Campaigns' Own Experiments.'' \emph{American Political Science Review} 118(4): 2021--39.
-\item Holm, Sture. 1979. ``A Simple Sequentially Rejective Multiple Test Procedure.'' \emph{Scandinavian Journal of Statistics} 6(2): 65--70.
-\item Mattingly, Daniel C., Trevor Incerti, Changwook Ju, Colin Moreshead, Seiki Tanaka, and Hikaru Yamagishi. 2025. ``Chinese State Media Persuades a Global Audience That the `China Model' Is Superior: Evidence from a 19-Country Experiment.'' \emph{American Journal of Political Science} 69(3): 1029--46. \url{https://doi.org/10.1111/ajps.12887}.
-\item Samii, Cyrus, and Peter M.\ Aronow. 2012. ``On Equivalencies between Design-Based and Regression-Based Variance Estimators for Randomized Experiments.'' \emph{Statistics \& Probability Letters} 82(2): 365--70.
-\item Wells, Gary L., and Paul D.\ Windschitl. 1999. ``Stimulus Sampling and Social Psychological Experimentation.'' \emph{Personality and Social Psychology Bulletin} 25(9): 1115--25.
-\end{description}
-
-\appendix
-\section*{Appendix}
-\renewcommand{\thetable}{A\arabic{table}}
-\setcounter{table}{0}
-
-\begin{table}[ht]
-\centering
-\caption{Effect of each video relative to its country's \vid{pol2}, Competition arm}
-\label{tab:videos}
-\begin{tabular}{lcccccc}
+\caption{Effect of each CGTN video on perceptions of China relative to \vid{china\_pol2}, Competition arm}
+\label{tab:mechvideos}
+\begin{tabular}{lccc}
 \toprule
- & \multicolumn{3}{c}{Political model} & \multicolumn{3}{c}{Economic model} \\
-\cmidrule(lr){2-4}\cmidrule(lr){5-7}
-Video & Estimate (SE) & Holm $p$ & BH $p$ & Estimate (SE) & Holm $p$ & BH $p$ \\
+Perception of China & \vid{china\_econ1} & \vid{china\_econ2} & \vid{china\_pol1} \\
 \midrule
-\vid{china\_econ1} & 0.605 (0.110) & $<$0.001 & $<$0.001 & 0.970 (0.115) & $<$0.001 & $<$0.001 \\
-\vid{china\_econ2} & 0.451 (0.109) & $<$0.001 & $<$0.001 & 0.704 (0.114) & $<$0.001 & $<$0.001 \\
-\vid{china\_pol1}  & 0.477 (0.110) & $<$0.001 & $<$0.001 & 0.536 (0.115) & $<$0.001 & $<$0.001 \\
-\vid{us\_econ1}    & $-$0.015 (0.107) & 1.000 & 0.885 & $-$0.384 (0.114) & 0.004 & 0.001 \\
-\vid{us\_econ2}    & $-$0.024 (0.113) & 1.000 & 0.885 & $-$0.326 (0.119) & 0.031 & 0.009 \\
-\vid{us\_pol1}     & $-$0.067 (0.108) & 1.000 & 0.644 & $-$0.213 (0.116) & 0.262 & 0.087 \\
-\midrule
-$N$ & \multicolumn{3}{c}{1,459} & \multicolumn{3}{c}{1,456} \\
+Selects competent leaders       & 0.31 (0.11) & 0.31 (0.12) & 0.77 (0.11) \\
+Delivers economic growth        & 0.30 (0.09) & 0.21 (0.09) & 0.33 (0.09) \\
+Political stability             & 0.27 (0.11) & 0.14 (0.11) & 0.25 (0.11) \\
+Responsive to people's needs    & 0.18 (0.11) & 0.17 (0.11) & 0.14 (0.11) \\
+Ruling party sometimes loses    & 0.34 (0.12) & 0.25 (0.12) & 0.29 (0.12) \\
+Right to free speech            & 0.19 (0.13) & 0.17 (0.13) & 0.33 (0.14) \\
+Democratic system               & 0.41 (0.13) & 0.19 (0.13) & 0.46 (0.13) \\
+Adults vote for national leader & 0.36 (0.13) & 0.25 (0.13) & 0.49 (0.13) \\
 \bottomrule
 \end{tabular}
-\tablenote{\emph{Note:} One regression per outcome, including indicators for the Chinese video (reference \vid{china\_pol2}) and the US video (reference \vid{us\_pol2}), country fixed effects, covariates, and HC2 standard errors. $p$-values are adjusted across all twelve coefficients.}
+\tablenote{\emph{Note:} One regression per perception (1 = strongly disagree, 7 = strongly agree), with indicators for the Chinese and US videos, country fixed effects, covariates, and HC2 standard errors in parentheses ($N \approx 1{,}455$). Six of the 24 coefficients have Holm-adjusted $p < 0.05$ across all 24.}
 \end{table}
 
-\begin{table}[ht]
+\begin{table}[H]
 \centering
-\caption{The authors' video-type specification, pooled and split by arm}
+\caption{Position check, single-country arms}
+\label{tab:position}
+\begin{tabular}{llccc}
+\toprule
+Arm & Comparison & Political model & Economic model & $N$ \\
+\midrule
+China & Economic vs.\ \vid{pol1}, \vid{pol2} second for all & $-$0.043 (0.095) & 0.237 (0.095) & 1,174 \\
+China & \vid{pol2} first vs.\ second, political pairs        & $-$0.117 (0.114) & $-$0.028 (0.115) & 732 \\
+USA   & Economic vs.\ \vid{pol1}, \vid{pol2} second for all & 0.076 (0.066) & 0.073 (0.079) & 1,120 \\
+USA   & \vid{pol2} first vs.\ second, political pairs        & $-$0.020 (0.074) & 0.097 (0.092) & 742 \\
+\bottomrule
+\end{tabular}
+\tablenote{\emph{Note:} OLS estimates with country fixed effects, covariates, and HC2 standard errors in parentheses. The first row of each arm restricts Equation~\ref{eq:companion} to respondents whose \vid{video2} is \vid{pol2}; the second compares, among respondents who saw \vid{pol1} and \vid{pol2}, those whose \vid{video1} is \vid{pol2} with those whose \vid{video2} is \vid{pol2}. $N$ is for the political model. Positive values mean more favorable to China.}
+\end{table}
+
+\subsection*{B. The Replication Code's Video-Type Analysis}
+
+The authors' replication code (\texttt{7.\ mechanism\_analysis.R}, section ``Estimate effects by treatment video'') regresses each outcome on the type of the first-listed video (\vid{video1\_clean}: China economic, China political, US economic, or US political, with Control as the reference) and tests the difference between Chinese economic and political videos. Neither the published article nor its appendix reports these estimates.
+
+Two features of this specification matter. First, in the China arm, the first-listed video is the randomized draw and the second is almost always \vid{china\_pol2} (Table~\ref{tab:assignment}). ``China economic'' therefore means an economic video plus \vid{china\_pol2}, and ``China political'' means \vid{china\_pol1} plus \vid{china\_pol2}; the contrast between them is the same quantity as $\delta$ in Equation~\ref{eq:companion}. Second, in the Competition arm the first-listed video is always the US video, so Competition respondents, who also saw a CGTN video, are pooled into the US categories with the USA arm.
+
+Table~\ref{tab:authors} reproduces the specification and re-estimates it with Competition respondents in separate categories. The Chinese estimates are unchanged, and the pooled contrast between Chinese economic and political videos (0.248 on the economic model) matches the China-arm estimate in Table~\ref{tab:content}. The US estimates, however, are strongly attenuated by the pooling: relative to Control, US videos appear to have almost no effect on preference for the political model ($-0.003$ and $-0.068$), whereas the USA arm alone shows effects of $-0.39$ and $-0.47$. The contrast between US economic and political videos is not significant in either specification, so the pooling distorts the levels but not the comparison of content types.
+
+\begin{table}[H]
+\centering
+\caption{Effects by first-listed video type: authors' specification and arm-separated version}
 \label{tab:authors}
-\begin{tabular}{lcc}
+\begin{tabular}{lcccc}
 \toprule
- & Political model & Economic model \\
+ & \multicolumn{2}{c}{Political model} & \multicolumn{2}{c}{Economic model} \\
+\cmidrule(lr){2-3}\cmidrule(lr){4-5}
+ & Pooled & By arm & Pooled & By arm \\
 \midrule
-\multicolumn{3}{l}{\emph{As in the replication code (Competition arm coded by its US video)}} \\
-Chinese economic                    & 1.040 (0.061) & 0.988 (0.066) \\
-Chinese political                   & 1.040 (0.064) & 0.741 (0.067) \\
-US economic                         & $-$0.003 (0.046) & $-$0.191 (0.053) \\
-US political                        & $-$0.068 (0.046) & $-$0.108 (0.054) \\
-Chinese economic $-$ Chinese political & 0.001 (0.078) & 0.248 (0.078) \\
+China economic   & 1.040 (0.061) & 1.041 (0.061) & 0.988 (0.066) & 0.989 (0.066) \\
+China political  & 1.040 (0.064) & 1.040 (0.064) & 0.741 (0.067) & 0.741 (0.067) \\
+US economic      & $-$0.003 (0.046) & $-$0.388 (0.049) & $-$0.191 (0.053) & $-$0.567 (0.059) \\
+US political     & $-$0.068 (0.046) & $-$0.466 (0.048) & $-$0.108 (0.054) & $-$0.575 (0.059) \\
+Competition: US econ. & --- & 0.385 (0.063) & --- & 0.188 (0.068) \\
+Competition: US pol.  & --- & 0.344 (0.062) & --- & 0.376 (0.070) \\
 \midrule
-\multicolumn{3}{l}{\emph{USA and Competition arms coded separately}} \\
-USA arm, economic companion video           & $-$0.388 (0.049) & $-$0.567 (0.059) \\
-USA arm, two political videos               & $-$0.466 (0.048) & $-$0.575 (0.059) \\
-Competition arm, US economic video          & 0.385 (0.063) & 0.188 (0.068) \\
-Competition arm, US political video         & 0.344 (0.062) & 0.376 (0.070) \\
+China econ.\ $-$ China pol. & 0.001 (0.078) & 0.001 (0.078) & 0.248 (0.078) & 0.247 (0.078) \\
+US econ.\ $-$ US pol.       & 0.065 (0.049) & 0.079 (0.054) & $-$0.083 (0.055) & 0.007 (0.065) \\
 \midrule
-$N$ & 5,952 & 5,946 \\
+$N$ & \multicolumn{2}{c}{5,952} & \multicolumn{2}{c}{5,946} \\
 \bottomrule
 \end{tabular}
-\tablenote{\emph{Note:} All coefficients are relative to the control group, with country fixed effects, covariates, and HC2 standard errors, following \texttt{7. mechanism\_analysis.R} in the replication package. In the USA arm, an economic first video variable corresponds to an economic companion of \vid{us\_pol2}, and a political one to two political videos. Chinese coefficients from the split model are omitted.}
+\tablenote{\emph{Note:} OLS estimates relative to Control with country fixed effects, covariates, and HC2 standard errors in parentheses. ``Pooled'' reproduces the specification in the authors' code, in which Competition-arm respondents fall into the US categories. ``By arm'' gives them separate categories.}
 \end{table}
 
 \end{document}

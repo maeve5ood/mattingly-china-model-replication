@@ -4,7 +4,7 @@ This repository contains a **replication and extension** of:
 
 > Mattingly, Daniel C., Trevor Incerti, Changwook Ju, Colin Moreshead, Seiki Tanaka, and Hikaru Yamagishi. 2025. "Chinese State Media Persuades a Global Audience That the 'China Model' Is Superior: Evidence from a 19-Country Experiment." *American Journal of Political Science* 69(3): 1029–46. https://doi.org/10.1111/ajps.12887
 
-The original analysis was written in R. This project reproduces the main results in Python and extends them by *unbundling the treatments*: estimating video-level effects and order effects within the Competition arm.
+The original analysis was written in R. This project reproduces the main results in Python and extends them by *unbundling the treatments*: using the random assignment of specific videos within treatment arms to estimate how much individual messages differ in persuasiveness, whether economic and political content differ, and what each kind of video changes in perceptions of China.
 
 ## Data
 
@@ -39,7 +39,7 @@ cd paper && latexmk -pdf main.tex
 ├── src/
 │   ├── 01_clean.py       # load and prepare data
 │   ├── 02_replicate.py   # main results (Table A3)
-│   ├── 03_extension.py   # video-level and order effects
+│   ├── 03_extension.py   # within-arm assignment, video-level effects, mechanisms
 │   └── 04_figures.py     # figures
 ├── paper/
 │   ├── main.tex          # replication and extension paper (LaTeX)
@@ -56,17 +56,22 @@ cd paper && latexmk -pdf main.tex
 |---|---|
 | `output/tables/sample_flow.csv` | Sample construction: respondents screened out before randomization (N = 6,276 randomized) |
 | `output/tables/primary_coefficients.csv` | Table A3: effects on preference for China's political model, economic model, and world leadership, with and without covariates |
-| `output/tables/table_a3_check.csv` | Side-by-side comparison of replicated and published Table A3 estimates |
+| `output/tables/table_a3_check.csv` | Side-by-side comparison of all 24 replicated and published Table A3 estimates |
 | `output/tables/standardized_effects.csv` | Unadjusted effects in control-group standard deviations (reported in the main text) |
-| `output/tables/ext_assignment.csv` | Extension: video combinations in the China and USA arms, documenting the assignment rule |
-| `output/tables/ext_companion.csv` | Extension A: economic vs. political companion video within the China and USA arms (with MDEs) |
-| `output/tables/ext_companion_position.csv` | Extension A: robustness of the companion comparison to video position |
-| `output/tables/ext_companion_mechanisms.csv` | Extension A: companion effect on each perception item (performance and democracy) |
-| `output/tables/ext_authors_video_type.csv` | Reproduction of the authors' unpublished video-type models (`7. mechanism_analysis.R`), pooled and split by arm |
-| `output/tables/ext_competition_independence.csv` | Extension B: test that US and Chinese videos were assigned independently in the Competition arm |
-| `output/tables/ext_competition_types.csv` | Extension B: effects of economic vs. political Chinese and US videos in the Competition arm |
-| `output/tables/ext_competition_videos.csv` | Extension B: effect of each video relative to its country's `pol2` video |
+| `output/tables/share_prefer_china.csv` | Share of respondents preferring China's model, by arm (reported in the main text) |
+| `output/tables/ext_assignment.csv` | Video pairs in the China and USA arms; verifies that `pol2` was always shown (paper Table 4) |
+| `output/tables/ext_competition_independence.csv` | Test that US and Chinese videos were assigned independently in the Competition arm |
+| `output/tables/ext_competition_videos.csv` | Effect of each video relative to its country's `pol2`, Competition arm (paper Figure 2, Table A1) |
+| `output/tables/ext_competition_joint_tests.csv` | Wald tests that a country's four videos are equally persuasive (Table A1) |
+| `output/tables/ext_competition_types.csv` | Economic vs. political videos with pooled political reference, Competition arm (Table A2) |
+| `output/tables/ext_content_type.csv` | Economic video vs. `pol1` in the single-country and Competition arms, with MDEs (paper Table 5, Figure 3) |
+| `output/tables/ext_companion_position.csv` | Position check: companion contrast with `pol2` held in the second slot, and the effect of `pol2`'s slot (Table A4) |
+| `output/tables/ext_companion_mechanisms.csv` | Companion contrast on perceptions of each arm's own country, with control-group means (Section 4.7) |
+| `output/tables/ext_mechanisms_content.csv` | Economic video vs. `china_pol1` on eight perceptions of China, both designs (paper Figure 4) |
+| `output/tables/ext_mechanisms_baseline.csv` | Control-group level of each perception of China |
+| `output/tables/ext_mechanisms_videos.csv` | Each CGTN video's effect on perceptions relative to `china_pol2` (Table A3) |
+| `output/tables/ext_authors_video_type.csv` | The replication code's unreported video-type regression, pooled and by arm (Table A5) |
 | `output/figures/fig1_main_effects.{pdf,png}` | Covariate-adjusted treatment effects (replicates the paper's main results figure) |
-| `output/figures/fig2_companion.{pdf,png}` | Extension A: economic vs. political companion video, China and USA arms |
-| `output/figures/fig3_competition_videos.{pdf,png}` | Extension B: video-level effects in the Competition arm |
-| `output/figures/fig4_companion_mechanisms.{pdf,png}` | Extension A: companion effect on perceptions of the arm's country, by item |
+| `output/figures/fig2_competition_videos.{pdf,png}` | Video-level effects in the Competition arm |
+| `output/figures/fig3_content_type.{pdf,png}` | Economic video vs. `pol1` in two designs |
+| `output/figures/fig4_mechanisms.{pdf,png}` | Economic video vs. `china_pol1` on perceptions of China |

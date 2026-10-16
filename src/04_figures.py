@@ -1,17 +1,17 @@
 """Produce figures for the replication and extension.
 
 All figures are coefficient plots: a point estimate with its 95% confidence
-interval, one color per outcome. They read only the CSV tables written by
-02_replicate.py and 03_extension.py, so no model is re-estimated here.
+interval. They read only the CSV tables written by 02_replicate.py and
+03_extension.py, so no model is re-estimated here.
 
 Input:  output/tables/primary_coefficients.csv
-        output/tables/ext_companion.csv
         output/tables/ext_competition_videos.csv
-        output/tables/ext_companion_mechanisms.csv
+        output/tables/ext_content_type.csv
+        output/tables/ext_mechanisms_content.csv
 Output: output/figures/fig1_main_effects.{pdf,png}
-        output/figures/fig2_companion.{pdf,png}
-        output/figures/fig3_competition_videos.{pdf,png}
-        output/figures/fig4_companion_mechanisms.{pdf,png}
+        output/figures/fig2_competition_videos.{pdf,png}
+        output/figures/fig3_content_type.{pdf,png}
+        output/figures/fig4_mechanisms.{pdf,png}
 """
 
 from pathlib import Path
@@ -33,11 +33,17 @@ OUTCOME_STYLE = {
     "political_model": {"label": "Political model", "color": "#2a78d6", "marker": "o"},
     "econ_model": {"label": "Economic model", "color": "#eb6834", "marker": "s"},
 }
+# Figure 4 compares designs rather than outcomes, so it uses a separate pair
+# of colors to avoid suggesting that its series are the two outcomes.
+DESIGN_STYLE = {
+    "China arm": {"label": "China arm (companion of pol2)", "color": "#1b7f6b", "marker": "D"},
+    "Competition arm": {"label": "Competition arm (single video)", "color": "#6a51a3", "marker": "^"},
+}
 TEXT = "#0b0b0b"
 MUTED = "#52514e"
 GRID = "#e4e3df"
 
-# Vertical distance between the two outcomes plotted for the same row.
+# Vertical distance between the two series plotted for the same row.
 DODGE = 0.18
 
 plt.rcParams.update({
@@ -59,22 +65,19 @@ def load_table(name):
     return pd.read_csv(TABLES / name)
 
 
-def coef_plot(ax, table, row_labels, xlabel, styles=OUTCOME_STYLE, series="outcome"):
+def coef_plot(ax, table, row_labels, xlabel, series="outcome", styles=OUTCOME_STYLE):
     """Draw estimates and 95% CIs on `ax`, one row per entry of `row_labels`.
 
     `table` needs columns `row`, `estimate`, `ci_low`, `ci_high`, and the
-    column named by `series`, whose values are the keys of `styles` (one
-    color and marker per series).
+    column named by `series`, whose values are the keys of `styles`.
     `row_labels` maps each value of `row` to its axis label, top to bottom.
     """
     rows = list(row_labels)
-    n_series = len(styles)
     for i, key in enumerate(styles):
         style = styles[key]
         sub = table[table[series] == key].set_index("row").loc[rows]
         # Rows run top to bottom, so y decreases; series are offset around each row.
-        offset = (n_series - 1) * DODGE / 2 - i * DODGE
-        y = [len(rows) - 1 - k + offset for k in range(len(rows))]
+        y = [len(rows) - 1 - k + (DODGE / 2 - i * DODGE) for k in range(len(rows))]
         ax.hlines(y, sub["ci_low"], sub["ci_high"], color=style["color"], linewidth=1.5)
         ax.plot(sub["estimate"], y, linestyle="none", marker=style["marker"], markersize=6,
                 color=style["color"], markeredgecolor="white", markeredgewidth=0.8,
@@ -91,7 +94,7 @@ def coef_plot(ax, table, row_labels, xlabel, styles=OUTCOME_STYLE, series="outco
 
 
 def add_legend(fig):
-    """Place a single legend for both outcomes above the figure."""
+    """Place a single legend for both series above the figure."""
     handles, labels = fig.axes[0].get_legend_handles_labels()
     fig.legend(handles, labels, loc="lower center", ncol=2, frameon=False,
                bbox_to_anchor=(0.5, 0.98))
@@ -110,6 +113,7 @@ def fig_main_effects():
     """Figure 1: covariate-adjusted treatment effects (replication of Table A3)."""
     coefs = load_table("primary_coefficients.csv")
     table = coefs[coefs["adjusted"] & (coefs["term"] != "Constant")].rename(columns={"term": "row"})
+    table = table[table["outcome"].isin(OUTCOME_STYLE)]
     rows = {"China": "China", "USA": "USA", "Competition": "Competition"}
 
     fig, ax = plt.subplots(figsize=(5.5, 2.6))
@@ -118,19 +122,8 @@ def fig_main_effects():
     save(fig, "fig1_main_effects")
 
 
-def fig_companion():
-    """Figure 2: effect of an economic (vs. political) companion video, by arm."""
-    table = load_table("ext_companion.csv").rename(columns={"arm": "row"})
-    rows = {"China": "China arm\n(CGTN videos)", "USA": "USA arm\n(State Dept. videos)"}
-
-    fig, ax = plt.subplots(figsize=(5.5, 2.2))
-    coef_plot(ax, table, rows, "Economic vs. political companion video (difference, 1–6 scale)")
-    add_legend(fig)
-    save(fig, "fig2_companion")
-
-
 def fig_competition_videos():
-    """Figure 3: each video's effect relative to its country's pol2, Competition arm."""
+    """Figure 2: each video's effect relative to its country's pol2, Competition arm."""
     table = load_table("ext_competition_videos.csv").rename(columns={"term": "row"})
     panels = [
         ("Chinese videos (vs. china_pol2)",
@@ -148,39 +141,47 @@ def fig_competition_videos():
     fig.supxlabel("Effect on preference for China (1–6 scale), vs. the country's pol2 video",
                   fontsize=9, y=-0.08)
     add_legend(fig)
-    save(fig, "fig3_competition_videos")
+    save(fig, "fig2_competition_videos")
 
 
-def fig_companion_mechanisms():
-    """Figure 4: companion effect on perceptions of the arm's country, by item."""
-    table = load_table("ext_companion_mechanisms.csv").rename(columns={"term": "row"})
-    rows = {label: label for label in table["row"].unique()}
-    # Single series per panel, so no legend is needed.
-    styles = {"all": {"label": "Estimate", "color": OUTCOME_STYLE["political_model"]["color"],
-                      "marker": "o"}}
-    table["series"] = "all"
-    panels = [("China", "China arm: perceptions of China"),
-              ("USA", "USA arm: perceptions of the US")]
-    n_performance = (table.drop_duplicates("row")["dimension"] == "performance").sum()
+def fig_content_type():
+    """Figure 3: economic content vs. pol1 in two independent designs."""
+    table = load_table("ext_content_type.csv")
+    table["row"] = table["source"] + " | " + table["design"]
+    rows = {
+        "CGTN | China arm": "CGTN, China arm\n(companion of pol2)",
+        "CGTN | Competition arm": "CGTN, Competition arm\n(single video)",
+        "State Department | USA arm": "State Dept., USA arm\n(companion of pol2)",
+        "State Department | Competition arm": "State Dept., Competition arm\n(single video)",
+    }
 
-    fig, axes = plt.subplots(1, 2, figsize=(7, 3.4), sharex=True, sharey=True)
-    for ax, (arm, title) in zip(axes, panels):
-        coef_plot(ax, table[table["arm"] == arm], rows, xlabel="", styles=styles, series="series")
-        ax.set_title(title, fontsize=9, color=TEXT, loc="left")
-        # Separate performance items (top) from democracy items (bottom).
-        ax.axhline(len(rows) - n_performance - 0.5, color=GRID, linewidth=0.8)
-    axes[1].tick_params(axis="y", labelleft=False)
-    fig.supxlabel("Economic vs. political companion video (difference, 1–7 agreement scale)",
-                  fontsize=9, y=-0.04)
-    save(fig, "fig4_companion_mechanisms")
+    fig, ax = plt.subplots(figsize=(5.5, 3.2))
+    coef_plot(ax, table, rows, "Economic video vs. pol1 (difference, 1–6 scale; + = toward China)")
+    add_legend(fig)
+    save(fig, "fig3_content_type")
+
+
+def fig_mechanisms():
+    """Figure 4: economic content vs. pol1 on perceptions of China, two designs."""
+    table = load_table("ext_mechanisms_content.csv").rename(columns={"outcome": "row"})
+    order = (table[table["design"] == "Competition arm"]
+             .sort_values("estimate")[["row", "label"]].itertuples(index=False))
+    rows = {row: label for row, label in order}
+
+    fig, ax = plt.subplots(figsize=(5.5, 3.6))
+    coef_plot(ax, table, rows,
+              "Economic video vs. pol1 (difference in agreement, 1–7 scale)",
+              series="design", styles=DESIGN_STYLE)
+    add_legend(fig)
+    save(fig, "fig4_mechanisms")
 
 
 def main():
     """Draw all figures."""
     fig_main_effects()
-    fig_companion()
     fig_competition_videos()
-    fig_companion_mechanisms()
+    fig_content_type()
+    fig_mechanisms()
     print(f"Saved figures to {FIGURES.relative_to(ROOT)}/")
 
 

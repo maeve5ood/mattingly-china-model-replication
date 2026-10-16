@@ -9,6 +9,7 @@ Input:  data/processed/clean.parquet
 Output: output/tables/primary_coefficients.csv  (all treatment coefficients)
         output/tables/table_a3_check.csv         (comparison with the paper)
         output/tables/standardized_effects.csv   (effects in control-group SDs)
+        output/tables/share_prefer_china.csv     (raw shares preferring China, by arm)
 """
 
 from pathlib import Path
@@ -38,12 +39,16 @@ TABLE_A3 = {
                                 "USA": (-0.43, 0.04), "Competition": (0.36, 0.05)},
     ("econ_model", True): {"Constant": (3.76, 0.23), "China": (0.87, 0.05),
                            "USA": (-0.57, 0.05), "Competition": (0.28, 0.06)},
+    ("world_leader", True): {"Constant": (2.74, 0.20), "China": (0.72, 0.05),
+                             "USA": (-0.31, 0.04), "Competition": (0.24, 0.05)},
     ("political_model", False): {"Constant": (2.56, 0.03), "China": (1.05, 0.05),
                                  "USA": (-0.44, 0.04), "Competition": (0.37, 0.05)},
     ("econ_model", False): {"Constant": (2.88, 0.04), "China": (0.87, 0.06),
                             "USA": (-0.58, 0.05), "Competition": (0.28, 0.06)},
+    ("world_leader", False): {"Constant": (2.75, 0.03), "China": (0.72, 0.05),
+                              "USA": (-0.33, 0.05), "Competition": (0.23, 0.05)},
 }
-TABLE_A3_N = {"political_model": 5952, "econ_model": 5946}
+TABLE_A3_N = {"political_model": 5952, "econ_model": 5946, "world_leader": 5943}
 
 # A value matches the paper if it rounds to the reported 2-decimal number.
 TOLERANCE = 0.005 + 1e-9
@@ -129,21 +134,40 @@ def standardized_effects(df, coefs):
     return unadjusted[["outcome", "term", "estimate", "control_sd", "standardized_effect"]]
 
 
+def share_prefer_china(df):
+    """Share of respondents who prefer China's model (4-6 on the 1-6 scale), by arm.
+
+    Reported in the text to convey magnitude in raw terms.
+    """
+    rows = []
+    for outcome in ["political_model", "econ_model"]:
+        answered = df[df[outcome].notna()]
+        shares = (answered[outcome] >= 4).groupby(answered["treatment"], observed=True).mean()
+        for arm, share in shares.items():
+            rows.append({"outcome": outcome, "treatment": arm, "share_prefer_china": share,
+                         "n": int((answered["treatment"] == arm).sum())})
+    return pd.DataFrame(rows)
+
+
 def main():
     """Estimate the primary models, check them against the paper, and save tables."""
     df = load_data()
     coefs = estimate_all(df)
     check = compare_with_paper(coefs)
     standardized = standardized_effects(df, coefs)
+    shares = share_prefer_china(df)
 
     TABLES.mkdir(parents=True, exist_ok=True)
     coefs.to_csv(TABLES / "primary_coefficients.csv", index=False)
     check.to_csv(TABLES / "table_a3_check.csv", index=False)
     standardized.to_csv(TABLES / "standardized_effects.csv", index=False)
+    shares.to_csv(TABLES / "share_prefer_china.csv", index=False)
 
     print(check.to_string(index=False))
     print()
     print(standardized.round(3).to_string(index=False))
+    print()
+    print(shares.round(3).to_string(index=False))
 
     if not check["match"].all():
         raise ValueError("Some estimates do not match Table A3; see table_a3_check.csv")

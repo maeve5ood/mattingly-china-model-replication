@@ -1,43 +1,61 @@
-"""Extension: unbundle the treatments into video-level effects.
+"""Extension: unbundle the treatments into message-level effects.
 
 The paper estimates the effect of each treatment arm as a bundle of two videos.
-Within arms, the specific videos were randomized, which allows two causal
-comparisons the paper does not report:
+Within arms, the specific videos were also assigned at random, which allows
+causal comparisons across individual messages that the published paper and
+appendix do not report.
 
-A. China and USA arms. `video1` was drawn uniformly from the country's four
-   videos; `video2` was then `pol2`, unless `video1` was `pol2`, in which case
-   it was `pol1`. Every respondent therefore saw `pol2`, and the companion
-   video was `pol1` (about 50%), `econ1` or `econ2` (about 25% each).
-   Comparing respondents whose companion was an economic vs. a political
-   video estimates the added value of economic content, holding `pol2` fixed.
-   The authors' replication code (`7. mechanism_analysis.R`) contains an
-   unpublished version of this comparison, which is reproduced here.
+A. Assignment structure. In the China and USA arms, `video1` is drawn from all
+   four of the country's videos and `video2` is a political video: `pol2`,
+   unless `video1` is `pol2`, in which case `pol1`. Every respondent therefore
+   saw `pol2`, and the randomized "companion" is `pol1` (about 50%), `econ1`
+   or `econ2` (about 25% each). In the Competition arm, one US and one Chinese
+   video were drawn independently from all four (a 4x4 factorial).
 
-B. Competition arm. One US and one Chinese video were drawn independently,
-   each from all four of that country's videos (a 4x4 factorial). This
-   identifies the effect of each Chinese video relative to the others while
-   the US video is balanced by randomization, and vice versa.
+B. Message heterogeneity (Competition arm). The effect of each video relative
+   to its country's `pol2`, with joint Wald tests that a country's four videos
+   are equally persuasive.
 
-The codebook labels `video1_clean` as the first video watched, while the
-paper states that the order of countries was randomized in the Competition
-arm, where `video1` is always the US video. The public data cannot resolve
-this, so Part A is also estimated with `pol2` held in the second slot for
-everyone, which removes any confound with position if `video1` is the first
-video shown.
+C. Economic vs. political content in two designs. Within the China and USA
+   arms, an economic vs. a political companion (holding `pol2` fixed); within
+   the Competition arm, the average economic video vs. `pol1`. Both contrasts
+   compare economic content with `pol1`, in independent samples.
 
-All models use the same covariates and HC2 standard errors as the primary
-analysis. p-values are adjusted for multiple comparisons within each family
-of tests using Holm and Benjamini-Hochberg, as in the authors' appendix.
+   Position check: the codebook labels `video1` as the first video watched.
+   If that is literal, economic companions always played before `pol2`, while
+   `pol1` played before `pol2` only half the time. The contrast is therefore
+   re-estimated among respondents with `pol2` in the second slot, and the
+   effect of `pol2`'s slot is estimated among political-political pairs.
+
+D. Mechanisms (exploratory). The same contrasts on the eight perceptions of
+   China that the authors measure after treatment, plus each Chinese video's
+   effect on those perceptions relative to `china_pol2`. For comparison, the
+   single-country contrast is also estimated on perceptions of each arm's own
+   country (China arm: China; USA arm: United States).
+
+E. The replication code's video-type analysis. `7. mechanism_analysis.R`
+   estimates effects by `video1_clean`, which the published paper does not
+   report. In the Competition arm `video1` is always the US video, so that
+   specification pools Competition respondents with the USA arm. This part
+   reproduces it and re-estimates it with the arms kept separate.
+
+All models use the covariates and HC2 standard errors of the primary analysis.
+p-values are adjusted within each family of tests using Holm and
+Benjamini-Hochberg, as in the authors' appendix.
 
 Input:  data/processed/clean.parquet
 Output: output/tables/ext_assignment.csv
-        output/tables/ext_companion.csv
+        output/tables/ext_competition_independence.csv
+        output/tables/ext_competition_videos.csv
+        output/tables/ext_competition_joint_tests.csv
+        output/tables/ext_competition_types.csv
+        output/tables/ext_content_type.csv
         output/tables/ext_companion_position.csv
         output/tables/ext_companion_mechanisms.csv
+        output/tables/ext_mechanisms_content.csv
+        output/tables/ext_mechanisms_baseline.csv
+        output/tables/ext_mechanisms_videos.csv
         output/tables/ext_authors_video_type.csv
-        output/tables/ext_competition_independence.csv
-        output/tables/ext_competition_types.csv
-        output/tables/ext_competition_videos.csv
 """
 
 from pathlib import Path
@@ -55,26 +73,26 @@ OUTCOMES = ["political_model", "econ_model"]
 # Same adjustment set as the primary analysis (02_replicate.py).
 COVARIATES = "C(country) + gender + age + education + national_pride + leftright"
 
+# Perceptions of China measured after treatment (1-7 agreement scale).
+# Labels abbreviate the item wording in Appendix D.2 of the paper. Variable
+# names follow the authors' data, including the `freespech` typo.
+MECHANISMS = {
+    "mech_competent_china": "Selects competent leaders",
+    "mech_growth_china": "Delivers economic growth",
+    "mech_stability_china": "Political stability",
+    "mech_responsive_china": "Responsive to people's needs",
+    "mech_turnover_china": "Ruling party sometimes loses",
+    "mech_freespech_china": "Right to free speech",
+    "mech_dem_china": "Democratic system",
+    "mech_vote_china": "Adults vote for national leader",
+}
+
+# Video indicators in the Competition arm, with `pol2` as each country's reference.
+CHINA_VIDEO = 'C(video2, Treatment("china_pol2"))'
+US_VIDEO = 'C(video1, Treatment("us_pol2"))'
+
 # Minimum detectable effect multiplier: two-sided alpha = 0.05, power = 0.80.
 MDE_MULTIPLIER = norm.ppf(0.975) + norm.ppf(0.80)
-
-# Single-country arms and the prefix of their video identifiers.
-ARMS = [("China", "china"), ("USA", "us")]
-
-# Mechanism items (1-7 agreement scales), grouped into the performance and
-# democracy dimensions identified by the authors' clustering
-# (`7. mechanism_analysis.R`). `{c}` is "china" or "us"; the China free speech
-# variable is misspelled in the data.
-MECHANISMS = {
-    "Selects competent leaders": ("performance", "mech_competent_{c}"),
-    "Delivers economic growth": ("performance", "mech_growth_{c}"),
-    "Political stability": ("performance", "mech_stability_{c}"),
-    "Responsive to the people": ("performance", "mech_responsive_{c}"),
-    "Free speech": ("democracy", "mech_freespeech_{c}"),
-    "Ruling party sometimes loses": ("democracy", "mech_turnover_{c}"),
-    "Democratic system": ("democracy", "mech_dem_{c}"),
-    "All adults may vote": ("democracy", "mech_vote_{c}"),
-}
 
 
 def load_data():
@@ -113,6 +131,25 @@ def extract(result, terms):
     return pd.DataFrame(rows)
 
 
+def contrast(result, weights, label):
+    """Estimate a linear combination of coefficients, e.g. 0.5*a + 0.5*b - c.
+
+    `weights` maps statsmodels' coefficient names to weights.
+    """
+    expr = " + ".join(f"{w} * {name}" for name, w in weights.items())
+    test = result.t_test(f"{expr} = 0")
+    low, high = test.conf_int()[0]
+    return {
+        "term": label,
+        "estimate": float(test.effect[0]),
+        "std_error": float(test.sd[0, 0]),
+        "p_value": float(test.pvalue),
+        "ci_low": low,
+        "ci_high": high,
+        "n": int(result.nobs),
+    }
+
+
 def adjust_pvalues(table):
     """Add Holm and Benjamini-Hochberg adjusted p-values to a family of tests."""
     table = table.copy()
@@ -121,45 +158,28 @@ def adjust_pvalues(table):
     return table
 
 
-def contrast(result, plus, minus, label):
-    """Estimate the difference between two coefficients (a Wald test).
-
-    Returns one row in the same format as `extract`.
-    """
-    weights = pd.Series(0.0, index=result.params.index)
-    weights[plus] = 1.0
-    weights[minus] = -1.0
-    test = result.t_test(weights.to_numpy())
-    ci = test.conf_int()[0]
-    return pd.DataFrame([{
-        "term": label,
-        "estimate": float(test.effect[0]),
-        "std_error": float(test.sd[0][0]),
-        "p_value": float(test.pvalue),
-        "ci_low": ci[0],
-        "ci_high": ci[1],
-        "n": int(result.nobs),
-    }])
-
-
-# Assignment structure ---------------------------------------------------------
+# Part A: assignment structure -------------------------------------------------
 
 def assignment_table(df):
-    """Count each (video1, video2) pair in the China and USA arms.
+    """Count video pairs in the China and USA arms and verify the assignment rule.
 
-    Documents the assignment rule: video1 is roughly uniform over the four
-    videos and video2 is pol2 unless video1 is pol2.
+    The rule: `video2` is `pol2` unless `video1` is `pol2`, in which case it is
+    `pol1`. It implements the paper's requirement (footnote 9) that every
+    respondent see at least one political video, but fixes which one.
     """
     tables = []
-    for arm, _ in ARMS:
+    for arm, prefix in [("China", "china"), ("USA", "us")]:
         arm_df = df[df["treatment"] == arm]
+        expected = arm_df["video1"].map(lambda v: f"{prefix}_pol1" if v == f"{prefix}_pol2"
+                                        else f"{prefix}_pol2")
+        check((arm_df["video2"] == expected).all(),
+              f"{arm} arm: video2 does not follow the pol2-unless-drawn rule")
         counts = arm_df.groupby(["video1", "video2"]).size().reset_index(name="n")
         counts.insert(0, "arm", arm)
+        counts["share"] = counts["n"] / counts["n"].sum()
         tables.append(counts)
     return pd.concat(tables, ignore_index=True)
 
-
-# Part A: companion video in the China and USA arms ---------------------------
 
 def add_companion(arm_df, prefix):
     """Identify the randomized companion of the always-shown `pol2` video.
@@ -177,128 +197,6 @@ def add_companion(arm_df, prefix):
     return arm_df
 
 
-def companion_effects(df):
-    """Estimate the effect of an economic (vs. political) companion video.
-
-    Run separately for each single-country arm and outcome. The MDE is the
-    smallest true effect detectable with 80% power given the estimated SE.
-    """
-    tables = []
-    for arm, prefix in ARMS:
-        arm_df = add_companion(df[df["treatment"] == arm], prefix)
-        for outcome in OUTCOMES:
-            result = fit(arm_df, f"{outcome} ~ companion_econ + {COVARIATES}")
-            row = extract(result, {"companion_econ": "Economic companion"})
-            used = arm_df.dropna(subset=[outcome])
-            row.insert(0, "arm", arm)
-            row.insert(1, "outcome", outcome)
-            row["n_econ"] = int(used["companion_econ"].sum())
-            row["n_pol"] = int((1 - used["companion_econ"]).sum())
-            row["mde"] = MDE_MULTIPLIER * row["std_error"]
-            tables.append(row)
-    return adjust_pvalues(pd.concat(tables, ignore_index=True))
-
-
-def companion_position(df):
-    """Check whether the companion comparison is confounded with video position.
-
-    If `video1` is the first video shown (as the codebook states), economic
-    companions always play before `pol2`, while political companions play
-    before `pol2` only half the time. Two checks:
-
-    1. Re-estimate the companion effect among respondents with `pol2` in the
-       second slot, so position is identical in both groups.
-    2. Among political-political pairs, compare `pol2` in the first vs. the
-       second slot, which isolates any effect of position itself.
-    """
-    tables = []
-    for arm, prefix in ARMS:
-        arm_df = add_companion(df[df["treatment"] == arm], prefix)
-        pol2 = f"{prefix}_pol2"
-        same_position = arm_df[arm_df["video2"] == pol2]
-        political_pairs = arm_df[arm_df["companion_econ"] == 0].copy()
-        political_pairs["pol2_first"] = (political_pairs["video1"] == pol2).astype(int)
-
-        for outcome in OUTCOMES:
-            held = fit(same_position, f"{outcome} ~ companion_econ + {COVARIATES}")
-            order = fit(political_pairs, f"{outcome} ~ pol2_first + {COVARIATES}")
-            rows = pd.concat([
-                extract(held, {"companion_econ": "Economic companion, pol2 second for all"}),
-                extract(order, {"pol2_first": "pol2 first vs. second (political pairs)"}),
-            ])
-            rows.insert(0, "arm", arm)
-            rows.insert(1, "outcome", outcome)
-            tables.append(rows)
-    return pd.concat(tables, ignore_index=True)
-
-
-def companion_mechanisms(df):
-    """Estimate the companion effect on each perception of the arm's country.
-
-    China-arm respondents are asked about China, USA-arm respondents about the
-    US. p-values are adjusted across the eight items within each arm.
-    """
-    tables = []
-    for arm, prefix in ARMS:
-        arm_df = add_companion(df[df["treatment"] == arm], prefix)
-        rows = []
-        for label, (dimension, template) in MECHANISMS.items():
-            variable = template.format(c=prefix)
-            if variable == "mech_freespeech_china":
-                variable = "mech_freespech_china"
-            result = fit(arm_df, f"{variable} ~ companion_econ + {COVARIATES}")
-            row = extract(result, {"companion_econ": label})
-            row.insert(0, "dimension", dimension)
-            rows.append(row)
-        table = adjust_pvalues(pd.concat(rows, ignore_index=True))
-        table.insert(0, "arm", arm)
-        tables.append(table)
-    return pd.concat(tables, ignore_index=True)
-
-
-def authors_video_type(df):
-    """Reproduce the authors' unpublished video-type models, then split by arm.
-
-    The authors regress outcomes on `video1_clean` (`7. mechanism_analysis.R`,
-    lines 219-244). In the Competition arm `video1` is always the US video,
-    so those respondents are coded as US economic or US political and pooled
-    with the USA arm. The split model gives USA-arm and Competition-arm
-    respondents separate categories, as in the paper's own description of
-    the design as six groups (footnote 10).
-    """
-    pooled_var = 'C(video1_clean, Treatment("control"))'
-    split_var = 'C(video_group, Treatment("control"))'
-
-    data = df.copy()
-    video_type = data["video1_clean"].astype(str)
-    data["video_group"] = video_type.where(
-        data["treatment"] != "Competition", "competition_" + video_type
-    )
-
-    tables = []
-    for outcome in OUTCOMES:
-        pooled = fit(data, f"{outcome} ~ {pooled_var} + {COVARIATES}")
-        pooled_terms = {f"{pooled_var}[T.{v}]": v for v in
-                        ["china_econ", "china_pol", "us_econ", "us_pol"]}
-        pooled_rows = pd.concat([
-            extract(pooled, pooled_terms),
-            contrast(pooled, f"{pooled_var}[T.china_econ]", f"{pooled_var}[T.china_pol]",
-                     "china_econ - china_pol"),
-        ]).assign(model="authors (pooled)")
-
-        split = fit(data, f"{outcome} ~ {split_var} + {COVARIATES}")
-        split_terms = {f"{split_var}[T.{v}]": v for v in
-                       ["us_econ", "us_pol", "competition_us_econ", "competition_us_pol"]}
-        split_rows = extract(split, split_terms).assign(model="split by arm")
-
-        rows = pd.concat([pooled_rows, split_rows], ignore_index=True)
-        rows.insert(0, "outcome", outcome)
-        tables.append(rows)
-    return pd.concat(tables, ignore_index=True)
-
-
-# Part B: 4x4 factorial in the Competition arm --------------------------------
-
 def competition_sample(df):
     """Return the Competition arm with video type indicators.
 
@@ -313,9 +211,67 @@ def competition_sample(df):
 
 
 def independence_test(comp):
-    """Chi-squared test that the US and Chinese videos were assigned independently."""
-    chi2, p, dof, _ = chi2_contingency(pd.crosstab(comp["video1"], comp["video2"]))
-    return pd.DataFrame([{"chi2": chi2, "df": dof, "p_value": p, "n": len(comp)}])
+    """Chi-squared test that the US and Chinese videos were assigned independently.
+
+    Also reports the smallest and largest of the 16 cell counts.
+    """
+    cells = pd.crosstab(comp["video1"], comp["video2"])
+    chi2, p, dof, _ = chi2_contingency(cells)
+    return pd.DataFrame([{"chi2": chi2, "df": dof, "p_value": p, "n": len(comp),
+                          "min_cell": int(cells.values.min()), "max_cell": int(cells.values.max())}])
+
+
+# Part B: message heterogeneity in the Competition arm -------------------------
+
+def video_terms(prefix):
+    """statsmodels names of the three non-reference videos of one country."""
+    factor = CHINA_VIDEO if prefix == "china" else US_VIDEO
+    return {f"{factor}[T.{prefix}_{v}]": f"{prefix}_{v}" for v in ["econ1", "econ2", "pol1"]}
+
+
+def fit_video_model(comp, outcome):
+    """Regress `outcome` on Chinese and US video indicators (reference: `pol2`)."""
+    return fit(comp, f"{outcome} ~ {CHINA_VIDEO} + {US_VIDEO} + {COVARIATES}")
+
+
+def video_effects(comp):
+    """Estimate each video's effect relative to its country's `pol2` video.
+
+    `pol2` is the reference because it is the video every respondent in the
+    single-country arms saw, which links these estimates to Part C.
+    """
+    terms = {**video_terms("china"), **video_terms("us")}
+    tables = []
+    for outcome in OUTCOMES:
+        rows = extract(fit_video_model(comp, outcome), terms)
+        rows.insert(0, "outcome", outcome)
+        tables.append(rows)
+    return adjust_pvalues(pd.concat(tables, ignore_index=True))
+
+
+def joint_tests(comp):
+    """Wald test that a country's four videos have equal effects.
+
+    Equivalent to testing that the three coefficients relative to `pol2` are
+    all zero. Also reports the range of the four video effects.
+    """
+    rows = []
+    for outcome in OUTCOMES:
+        result = fit_video_model(comp, outcome)
+        for prefix in ["china", "us"]:
+            names = list(video_terms(prefix))
+            wald = result.wald_test(", ".join(f"{n} = 0" for n in names), scalar=True)
+            effects = list(result.params[names]) + [0.0]  # pol2 is the reference
+            rows.append({
+                "outcome": outcome,
+                "videos": prefix,
+                "chi2": float(wald.statistic),
+                "df": len(names),
+                "p_value": float(wald.pvalue),
+                "range": max(effects) - min(effects),
+                "n": int(result.nobs),
+            })
+    return adjust_pvalues(pd.DataFrame(rows))
 
 
 def type_effects(comp):
@@ -342,40 +298,195 @@ def type_effects(comp):
     return pd.concat([main, table[table["model"] == "interaction"]], ignore_index=True)
 
 
-def video_effects(comp):
-    """Estimate each video's effect relative to its country's `pol2` video.
+# Part C: economic vs. political content in two designs ------------------------
 
-    `pol2` is the reference because it is the video every respondent in the
-    single-country arms saw, which links these estimates to Part A.
+def econ_vs_pol1_weights(prefix):
+    """Weights for (average economic video) - pol1 in the Competition video model."""
+    econ1, econ2, pol1 = list(video_terms(prefix))
+    return {econ1: 0.5, econ2: 0.5, pol1: -1}
+
+
+def content_contrasts(df, comp, outcomes):
+    """Economic content vs. `pol1`, estimated in both designs for each outcome.
+
+    Single-country arms: economic vs. political companion of `pol2`.
+    Competition arm: average of the two economic videos minus `pol1`.
+    Positive values mean more favorable to China in both designs.
     """
-    china = 'C(video2, Treatment("china_pol2"))'
-    us = 'C(video1, Treatment("us_pol2"))'
-    terms = {f"{china}[T.china_{v}]": f"china_{v}" for v in ["econ1", "econ2", "pol1"]}
-    terms.update({f"{us}[T.us_{v}]": f"us_{v}" for v in ["econ1", "econ2", "pol1"]})
+    rows = []
+    for outcome in outcomes:
+        comp_result = fit_video_model(comp, outcome)
+        for arm, prefix, source in [("China", "china", "CGTN"), ("USA", "us", "State Department")]:
+            arm_df = add_companion(df[df["treatment"] == arm], prefix)
+            result = fit(arm_df, f"{outcome} ~ companion_econ + {COVARIATES}")
+            single = extract(result, {"companion_econ": "Economic vs. pol1"}).iloc[0].to_dict()
+            single.update({"design": f"{arm} arm", "mde": MDE_MULTIPLIER * single["std_error"]})
 
+            competition = contrast(comp_result, econ_vs_pol1_weights(prefix), "Economic vs. pol1")
+            competition.update({"design": "Competition arm",
+                                "mde": MDE_MULTIPLIER * competition["std_error"]})
+
+            for row in (single, competition):
+                row.update({"outcome": outcome, "source": source})
+                rows.append(row)
+    columns = ["outcome", "source", "design", "term", "estimate", "std_error", "p_value",
+               "ci_low", "ci_high", "mde", "n"]
+    return adjust_pvalues(pd.DataFrame(rows)[columns])
+
+
+def companion_position(df):
+    """Check whether the companion contrast is confounded with video position.
+
+    If `video1` is the first video shown, as the codebook states, economic
+    companions always played before `pol2`, while `pol1` played before `pol2`
+    only half the time. Two checks for each single-country arm:
+
+    1. Re-estimate the companion contrast among respondents with `pol2` in the
+       second slot, so position is the same in both groups.
+    2. Among political-political pairs, compare `pol2` in the first vs. the
+       second slot, which isolates any effect of position itself.
+    """
     tables = []
-    for outcome in OUTCOMES:
-        result = fit(comp, f"{outcome} ~ {china} + {us} + {COVARIATES}")
-        rows = extract(result, terms)
+    for arm, prefix in [("China", "china"), ("USA", "us")]:
+        arm_df = add_companion(df[df["treatment"] == arm], prefix)
+        pol2 = f"{prefix}_pol2"
+        same_position = arm_df[arm_df["video2"] == pol2]
+        political_pairs = arm_df[arm_df["companion_econ"] == 0].copy()
+        political_pairs["pol2_first"] = (political_pairs["video1"] == pol2).astype(int)
+
+        for outcome in OUTCOMES:
+            held = fit(same_position, f"{outcome} ~ companion_econ + {COVARIATES}")
+            order = fit(political_pairs, f"{outcome} ~ pol2_first + {COVARIATES}")
+            rows = pd.concat([
+                extract(held, {"companion_econ": "Economic companion, pol2 second for all"}),
+                extract(order, {"pol2_first": "pol2 first vs. second (political pairs)"}),
+            ])
+            rows.insert(0, "arm", arm)
+            rows.insert(1, "outcome", outcome)
+            tables.append(rows)
+    return pd.concat(tables, ignore_index=True)
+
+
+# Part D: mechanisms -------------------------------------------------------------
+
+# Perception items asked about both countries; `{c}` is "china" or "us".
+# The China free-speech variable is misspelled in the authors' data.
+PERCEPTION_ITEMS = {
+    "mech_competent_{c}": "Selects competent leaders",
+    "mech_growth_{c}": "Delivers economic growth",
+    "mech_stability_{c}": "Political stability",
+    "mech_responsive_{c}": "Responsive to people's needs",
+    "mech_turnover_{c}": "Ruling party sometimes loses",
+    "mech_freespeech_{c}": "Right to free speech",
+    "mech_dem_{c}": "Democratic system",
+    "mech_vote_{c}": "Adults vote for national leader",
+}
+
+
+def companion_mechanisms(df):
+    """Single-country companion contrast on perceptions of the arm's own country.
+
+    China-arm respondents' perceptions of China and USA-arm respondents'
+    perceptions of the US. p-values are adjusted across the eight items
+    within each arm. Also reports each item's control-group mean.
+    """
+    control = df[df["treatment"] == "Control"]
+    tables = []
+    for arm, prefix in [("China", "china"), ("USA", "us")]:
+        arm_df = add_companion(df[df["treatment"] == arm], prefix)
+        rows = []
+        for template, label in PERCEPTION_ITEMS.items():
+            variable = template.format(c=prefix)
+            if variable == "mech_freespeech_china":
+                variable = "mech_freespech_china"
+            row = extract(fit(arm_df, f"{variable} ~ companion_econ + {COVARIATES}"),
+                          {"companion_econ": label})
+            row.insert(0, "outcome", variable)
+            row["control_mean"] = control[variable].mean()
+            rows.append(row)
+        table = adjust_pvalues(pd.concat(rows, ignore_index=True))
+        table.insert(0, "arm", arm)
+        tables.append(table)
+    return pd.concat(tables, ignore_index=True)
+
+def mechanism_contrasts(df, comp):
+    """Economic content vs. `pol1` on each perception of China, in both designs."""
+    table = content_contrasts(df, comp, list(MECHANISMS))
+    table = table[table["source"] == "CGTN"].drop(columns=["p_holm", "p_bh"])
+    table.insert(1, "label", table["outcome"].map(MECHANISMS))
+    return adjust_pvalues(table.reset_index(drop=True))
+
+
+def mechanism_baseline(df):
+    """Control-group level of each perception of China: mean and share agreeing (6-7)."""
+    control = df[df["treatment"] == "Control"]
+    rows = []
+    for outcome, label in MECHANISMS.items():
+        answered = control[outcome].dropna()
+        rows.append({"outcome": outcome, "label": label, "mean": answered.mean(),
+                     "share_agree": (answered >= 6).mean(), "n": len(answered)})
+    return pd.DataFrame(rows)
+
+
+def mechanism_videos(comp):
+    """Each Chinese video's effect on perceptions of China relative to `china_pol2`."""
+    tables = []
+    for outcome, label in MECHANISMS.items():
+        rows = extract(fit_video_model(comp, outcome), video_terms("china"))
         rows.insert(0, "outcome", outcome)
+        rows.insert(1, "label", label)
         tables.append(rows)
     return adjust_pvalues(pd.concat(tables, ignore_index=True))
 
 
+# Part E: the replication code's video-type analysis ----------------------------
+
+def authors_video_type(df):
+    """Reproduce the unreported `video1_clean` regression and re-estimate it by arm.
+
+    `pooled`: as in `7. mechanism_analysis.R`, where Competition respondents
+    fall into the US categories because `video1` is their US video.
+    `by_arm`: Competition respondents get their own categories.
+    """
+    data = df.copy()
+    data["video_type"] = data["video1_clean"].astype(str)
+    is_comp = data["treatment"] == "Competition"
+    data["video_type_by_arm"] = data["video_type"].where(~is_comp, "competition_" + data["video_type"])
+
+    rows = []
+    for outcome in OUTCOMES:
+        for spec, column in [("pooled", "video_type"), ("by_arm", "video_type_by_arm")]:
+            factor = f'C({column}, Treatment("control"))'
+            result = fit(data, f"{outcome} ~ {factor} + {COVARIATES}")
+            levels = [name for name in result.params.index if name.startswith(factor)]
+            table = extract(result, {name: name.split("[T.")[1].rstrip("]") for name in levels})
+            for a, b in [("china_econ", "china_pol"), ("us_econ", "us_pol")]:
+                diff = contrast(result, {f"{factor}[T.{a}]": 1, f"{factor}[T.{b}]": -1}, f"{a} - {b}")
+                table = pd.concat([table, pd.DataFrame([diff])], ignore_index=True)
+            table.insert(0, "outcome", outcome)
+            table.insert(1, "specification", spec)
+            rows.append(table)
+    return pd.concat(rows, ignore_index=True)
+
+
 def main():
-    """Run both parts of the extension and save the tables."""
+    """Run all parts of the extension and save the tables."""
     df = load_data()
     comp = competition_sample(df)
 
     results = {
         "ext_assignment.csv": assignment_table(df),
-        "ext_companion.csv": companion_effects(df),
+        "ext_competition_independence.csv": independence_test(comp),
+        "ext_competition_videos.csv": video_effects(comp),
+        "ext_competition_joint_tests.csv": joint_tests(comp),
+        "ext_competition_types.csv": type_effects(comp),
+        "ext_content_type.csv": content_contrasts(df, comp, OUTCOMES),
         "ext_companion_position.csv": companion_position(df),
         "ext_companion_mechanisms.csv": companion_mechanisms(df),
+        "ext_mechanisms_content.csv": mechanism_contrasts(df, comp),
+        "ext_mechanisms_baseline.csv": mechanism_baseline(df),
+        "ext_mechanisms_videos.csv": mechanism_videos(comp),
         "ext_authors_video_type.csv": authors_video_type(df),
-        "ext_competition_independence.csv": independence_test(comp),
-        "ext_competition_types.csv": type_effects(comp),
-        "ext_competition_videos.csv": video_effects(comp),
     }
 
     TABLES.mkdir(parents=True, exist_ok=True)
