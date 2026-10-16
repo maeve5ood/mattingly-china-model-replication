@@ -1,5 +1,8 @@
 """Run the full replication and extension pipeline from raw data to outputs.
 
+The last step checks that every reported number in paper/main.tex matches the
+outputs.
+
 Usage:
     python run_all.py
 """
@@ -14,6 +17,7 @@ STEPS = [
     "src/02_replicate.py",
     "src/03_extension.py",
     "src/04_figures.py",
+    "src/05_check_paper.py",
 ]
 
 

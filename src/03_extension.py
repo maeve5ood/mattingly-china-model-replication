@@ -34,13 +34,17 @@ D. Mechanisms (exploratory). The same contrasts on the eight perceptions of
    effect on those perceptions relative to `china_pol2`, both item by item and
    on a standardized summary index of the eight items (equally weighted, as in
    Kling, Liebman, and Katz 2007, and inverse-covariance weighted, as in
-   Anderson 2008). For comparison, the
+   Anderson 2008). The index is re-estimated dropping each item in turn, to
+   check that no single item drives it. For comparison, the
    single-country contrast is also estimated on perceptions of each arm's own
    country (China arm: China; USA arm: United States).
 
 E. Balance and missing outcomes. Pre-treatment covariate means and missing-
    outcome rates by video, for each way respondents were divided by video,
-   with tests that they do not differ across videos.
+   with tests that they do not differ across videos. For the test that video is
+   independent of country, the lower-tail p-value is also reported, which is
+   small when videos are spread across countries more evenly than independent
+   draws would usually produce.
 
 F. The replication code's video-type analysis. `7. mechanism_analysis.R`
    estimates effects by `video1_clean`, which the published paper does not
@@ -66,6 +70,7 @@ Output: output/tables/ext_assignment.csv
         output/tables/ext_mechanisms_baseline.csv
         output/tables/ext_mechanisms_videos.csv
         output/tables/ext_mechanisms_index.csv
+        output/tables/ext_mechanisms_index_loo.csv
         output/tables/ext_balance_means.csv
         output/tables/ext_balance_tests.csv
         output/tables/ext_authors_video_type.csv
@@ -487,7 +492,7 @@ def mechanism_videos(comp):
     return adjust_pvalues(pd.concat(tables, ignore_index=True))
 
 
-def mechanism_index(df, comp):
+def mechanism_index(df, comp, items=None):
     """Effect of each Chinese video on a summary index of the eight perceptions.
 
     The items are correlated and every comparison shares `china_pol2` as the
@@ -495,9 +500,9 @@ def mechanism_index(df, comp):
     standardized by the control group's mean and SD and combined two ways:
     an equally weighted mean (Kling, Liebman, and Katz 2007) and an
     inverse-covariance weighted mean (Anderson 2008), with weights from the
-    control group. Respondents need all eight items.
+    control group. Respondents need all items. `items` defaults to all eight.
     """
-    items = list(MECHANISMS)
+    items = list(MECHANISMS) if items is None else list(items)
     control = df[df["treatment"] == "Control"]
     center, scale = control[items].mean(), control[items].std()
     control_z = ((control[items] - center) / scale).dropna()
@@ -525,6 +530,16 @@ def mechanism_index(df, comp):
         rows["joint_p"] = float(wald.pvalue)
         rows["mean_item_correlation"] = item_correlation
         tables.append(rows)
+    return pd.concat(tables, ignore_index=True)
+
+
+def mechanism_index_leave_one_out(df, comp):
+    """The summary index re-estimated without each of the eight items in turn."""
+    tables = []
+    for dropped in MECHANISMS:
+        table = mechanism_index(df, comp, [item for item in MECHANISMS if item != dropped])
+        table.insert(0, "dropped_item", MECHANISMS[dropped])
+        tables.append(table.drop(columns=["mean_item_correlation"]))
     return pd.concat(tables, ignore_index=True)
 
 
@@ -565,7 +580,8 @@ def balance(df):
 
     Covariates are the authors' imputed values. Tests, for each grouping:
     equal means of each covariate (Wald, HC2), country independent of video
-    (chi-squared), a multinomial-logit omnibus test, and missing outcomes
+    (chi-squared, with the lower-tail p-value as a check for a more-even-than-
+    chance spread), a multinomial-logit omnibus test, and missing outcomes
     independent of video (chi-squared).
     """
     mean_rows, test_rows = [], []
@@ -588,6 +604,7 @@ def balance(df):
             add(f"equal means: {covariate}", float(wald.statistic), len(names), float(wald.pvalue))
         chi2, p, dof, _ = chi2_contingency(pd.crosstab(sub["country"], sub[column]))
         add("country independent of video", chi2, dof, p)
+        add("country independent of video, lower tail", chi2, dof, chi2_distribution.cdf(chi2, dof))
         add("multinomial logit omnibus", *multinomial_omnibus(sub, column))
         for outcome in OUTCOMES:
             chi2, p, dof, _ = chi2_contingency(pd.crosstab(sub[column], sub[outcome].isna()))
@@ -645,6 +662,7 @@ def main():
         "ext_mechanisms_baseline.csv": mechanism_baseline(df),
         "ext_mechanisms_videos.csv": mechanism_videos(comp),
         "ext_mechanisms_index.csv": mechanism_index(df, comp),
+        "ext_mechanisms_index_loo.csv": mechanism_index_leave_one_out(df, comp),
         "ext_balance_means.csv": balance_means,
         "ext_balance_tests.csv": balance_tests,
         "ext_authors_video_type.csv": authors_video_type(df),

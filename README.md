@@ -26,6 +26,8 @@ pip install -r requirements.txt
 python run_all.py
 ```
 
+The last step, `src/05_check_paper.py`, rebuilds every reported number in `paper/main.tex` (each table row and each sentence that reports a result) from the output tables and confirms that it appears in the paper; the run fails if any number no longer matches.
+
 To rebuild the paper after running the pipeline (requires a LaTeX distribution):
 
 ```bash
@@ -40,7 +42,8 @@ cd paper && latexmk -pdf main.tex
 │   ├── 01_clean.py       # load and prepare data
 │   ├── 02_replicate.py   # main results (Table A3)
 │   ├── 03_extension.py   # within-arm assignment, video-level effects, mechanisms
-│   └── 04_figures.py     # figures
+│   ├── 04_figures.py     # figures
+│   └── 05_check_paper.py # checks every number in the paper against the outputs
 ├── paper/
 │   ├── main.tex          # replication and extension paper (LaTeX)
 │   └── main.pdf          # compiled paper
@@ -72,8 +75,9 @@ cd paper && latexmk -pdf main.tex
 | `output/tables/ext_mechanisms_baseline.csv` | Control-group level of each perception of China |
 | `output/tables/ext_mechanisms_videos.csv` | Each CGTN video's effect on perceptions relative to `china_pol2` (Table A3) |
 | `output/tables/ext_mechanisms_index.csv` | Summary index of the eight perceptions (equally and inverse-covariance weighted): each CGTN video vs. `china_pol2` (Table A3) |
+| `output/tables/ext_mechanisms_index_loo.csv` | The summary index re-estimated without each of the eight items in turn (Section 4.7) |
 | `output/tables/ext_balance_means.csv` | Covariate means and missing-outcome rates by video (Table A5) |
-| `output/tables/ext_balance_tests.csv` | Balance, country, omnibus, and missingness tests by video (Table A5) |
+| `output/tables/ext_balance_tests.csv` | Balance, country (including the lower-tail p-value), omnibus, and missingness tests by video (Table A5) |
 | `output/tables/ext_authors_video_type.csv` | The replication code's unreported video-type regression, pooled and by arm (Table A6) |
 | `output/figures/fig1_main_effects.{pdf,png}` | Covariate-adjusted treatment effects (replicates the paper's main results figure) |
 | `output/figures/fig2_competition_videos.{pdf,png}` | Video-level effects in the Competition arm |
