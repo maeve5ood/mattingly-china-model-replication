@@ -14,7 +14,9 @@ A. Assignment structure. In the China and USA arms, `video1` is drawn from all
 
 B. Message heterogeneity (Competition arm). The effect of each video relative
    to its country's `pol2`, with joint Wald tests that a country's four videos
-   are equally persuasive.
+   are equally persuasive. The range of the four Chinese videos' effects is an
+   extreme of noisy estimates, so its bias and a basic 95% interval are
+   computed by a parametric bootstrap.
 
 C. Economic vs. political content in two designs. Within the China and USA
    arms, an economic vs. a political companion (holding `pol2` fixed); within
@@ -29,11 +31,18 @@ C. Economic vs. political content in two designs. Within the China and USA
 
 D. Mechanisms (exploratory). The same contrasts on the eight perceptions of
    China that the authors measure after treatment, plus each Chinese video's
-   effect on those perceptions relative to `china_pol2`. For comparison, the
+   effect on those perceptions relative to `china_pol2`, both item by item and
+   on a standardized summary index of the eight items (equally weighted, as in
+   Kling, Liebman, and Katz 2007, and inverse-covariance weighted, as in
+   Anderson 2008). For comparison, the
    single-country contrast is also estimated on perceptions of each arm's own
    country (China arm: China; USA arm: United States).
 
-E. The replication code's video-type analysis. `7. mechanism_analysis.R`
+E. Balance and missing outcomes. Pre-treatment covariate means and missing-
+   outcome rates by video, for each way respondents were divided by video,
+   with tests that they do not differ across videos.
+
+F. The replication code's video-type analysis. `7. mechanism_analysis.R`
    estimates effects by `video1_clean`, which the published paper does not
    report. In the Competition arm `video1` is always the US video, so that
    specification pools Competition respondents with the USA arm. This part
@@ -48,6 +57,7 @@ Output: output/tables/ext_assignment.csv
         output/tables/ext_competition_independence.csv
         output/tables/ext_competition_videos.csv
         output/tables/ext_competition_joint_tests.csv
+        output/tables/ext_competition_range.csv
         output/tables/ext_competition_types.csv
         output/tables/ext_content_type.csv
         output/tables/ext_companion_position.csv
@@ -55,13 +65,19 @@ Output: output/tables/ext_assignment.csv
         output/tables/ext_mechanisms_content.csv
         output/tables/ext_mechanisms_baseline.csv
         output/tables/ext_mechanisms_videos.csv
+        output/tables/ext_mechanisms_index.csv
+        output/tables/ext_balance_means.csv
+        output/tables/ext_balance_tests.csv
         output/tables/ext_authors_video_type.csv
 """
 
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
+import statsmodels.api as sm
 import statsmodels.formula.api as smf
+from scipy.stats import chi2 as chi2_distribution
 from scipy.stats import chi2_contingency, norm
 from statsmodels.stats.multitest import multipletests
 
@@ -274,6 +290,38 @@ def joint_tests(comp):
     return adjust_pvalues(pd.DataFrame(rows))
 
 
+def range_uncertainty(comp, draws=20000, seed=353):
+    """Bias and basic bootstrap interval for the range of the four Chinese videos.
+
+    The range (largest minus smallest effect, with `china_pol2` at zero) picks
+    the extremes of noisy estimates, so it is biased upward. A parametric
+    bootstrap draws the three coefficients from their estimated sampling
+    distribution, recomputes the range, and compares it with the observed one.
+    """
+    rng = np.random.default_rng(seed)
+    names = list(video_terms("china"))
+    rows = []
+    for outcome in OUTCOMES:
+        result = fit_video_model(comp, outcome)
+        theta = result.params[names].to_numpy()
+        covariance = result.cov_params().loc[names, names].to_numpy()
+        observed = np.ptp(np.append(theta, 0.0))
+        simulated = rng.multivariate_normal(theta, covariance, size=draws)
+        ranges = np.ptp(np.column_stack([simulated, np.zeros(draws)]), axis=1)
+        low, high = np.percentile(2 * observed - ranges, [2.5, 97.5])
+        rows.append({
+            "outcome": outcome,
+            "observed_range": observed,
+            "bootstrap_mean_range": ranges.mean(),
+            "bias": ranges.mean() - observed,
+            "bias_corrected_range": 2 * observed - ranges.mean(),
+            "ci_low": low,
+            "ci_high": high,
+            "draws": draws,
+        })
+    return pd.DataFrame(rows)
+
+
 def type_effects(comp):
     """Estimate effects of economic (vs. political) Chinese and US videos.
 
@@ -439,7 +487,115 @@ def mechanism_videos(comp):
     return adjust_pvalues(pd.concat(tables, ignore_index=True))
 
 
-# Part E: the replication code's video-type analysis ----------------------------
+def mechanism_index(df, comp):
+    """Effect of each Chinese video on a summary index of the eight perceptions.
+
+    The items are correlated and every comparison shares `china_pol2` as the
+    reference, so item-by-item results are not independent evidence. Items are
+    standardized by the control group's mean and SD and combined two ways:
+    an equally weighted mean (Kling, Liebman, and Katz 2007) and an
+    inverse-covariance weighted mean (Anderson 2008), with weights from the
+    control group. Respondents need all eight items.
+    """
+    items = list(MECHANISMS)
+    control = df[df["treatment"] == "Control"]
+    center, scale = control[items].mean(), control[items].std()
+    control_z = ((control[items] - center) / scale).dropna()
+    weights = np.linalg.inv(control_z.cov().to_numpy()).sum(axis=1)
+    item_correlation = control_z.corr().to_numpy()[np.triu_indices(len(items), 1)].mean()
+
+    data = comp.copy()
+    z = (data[items] - center) / scale
+    complete = z.notna().all(axis=1)
+    data["index_equal"] = z.mean(axis=1).where(complete)
+    data["index_inverse_covariance"] = pd.Series(z.to_numpy() @ weights / weights.sum(),
+                                                 index=data.index).where(complete)
+
+    terms = video_terms("china")
+    tables = []
+    for column, label in [("index_equal", "Equally weighted"),
+                          ("index_inverse_covariance", "Inverse-covariance weighted")]:
+        result = fit_video_model(data, column)
+        rows = extract(result, terms)
+        others = contrast(result, {name: 1 / 3 for name in terms}, "average of other three")
+        rows = pd.concat([rows, pd.DataFrame([others])], ignore_index=True)
+        wald = result.wald_test(", ".join(f"{n} = 0" for n in terms), scalar=True)
+        rows.insert(0, "index", label)
+        rows["joint_chi2"] = float(wald.statistic)
+        rows["joint_p"] = float(wald.pvalue)
+        rows["mean_item_correlation"] = item_correlation
+        tables.append(rows)
+    return pd.concat(tables, ignore_index=True)
+
+
+# Part E: balance and missing outcomes -------------------------------------------
+
+BALANCE_COVARIATES = ["gender", "age", "education", "national_pride", "leftright"]
+
+
+def video_groupings(df):
+    """The four ways respondents were divided by video: (label, data, column)."""
+    comp = df[df["treatment"] == "Competition"]
+    return [
+        ("China arm", df[df["treatment"] == "China"], "video1"),
+        ("USA arm", df[df["treatment"] == "USA"], "video1"),
+        ("Competition arm, Chinese video", comp, "video2"),
+        ("Competition arm, US video", comp, "video1"),
+    ]
+
+
+def multinomial_omnibus(sub, column):
+    """Likelihood-ratio test that covariates and country jointly predict the video.
+
+    Multinomial logit of the video on the five covariates and country dummies,
+    against an intercept-only model.
+    """
+    predictors = sub[BALANCE_COVARIATES].assign(country=sub["country"].astype(str))
+    X = sm.add_constant(pd.get_dummies(predictors, columns=["country"], drop_first=True).astype(float))
+    y = pd.Categorical(sub[column]).codes
+    full = sm.MNLogit(y, X).fit(disp=0)
+    null = sm.MNLogit(y, np.ones((len(y), 1))).fit(disp=0)
+    statistic = 2 * (full.llf - null.llf)
+    dof = (X.shape[1] - 1) * (len(np.unique(y)) - 1)
+    return statistic, dof, chi2_distribution.sf(statistic, dof)
+
+
+def balance(df):
+    """Covariate means and missing-outcome rates by video, with tests.
+
+    Covariates are the authors' imputed values. Tests, for each grouping:
+    equal means of each covariate (Wald, HC2), country independent of video
+    (chi-squared), a multinomial-logit omnibus test, and missing outcomes
+    independent of video (chi-squared).
+    """
+    mean_rows, test_rows = [], []
+    for label, sub, column in video_groupings(df):
+        for video, group in sub.groupby(column):
+            row = {"grouping": label, "video": video, "n": len(group)}
+            row.update(group[BALANCE_COVARIATES].mean().to_dict())
+            for outcome in OUTCOMES:
+                row[f"missing_{outcome}"] = group[outcome].isna().mean()
+            mean_rows.append(row)
+
+        def add(test, statistic, dof, p_value):
+            test_rows.append({"grouping": label, "test": test, "statistic": statistic,
+                              "df": dof, "p_value": p_value})
+
+        for covariate in BALANCE_COVARIATES:
+            result = fit(sub, f"{covariate} ~ C({column})")
+            names = [n for n in result.params.index if n.startswith(f"C({column})")]
+            wald = result.wald_test(", ".join(f"{n} = 0" for n in names), scalar=True)
+            add(f"equal means: {covariate}", float(wald.statistic), len(names), float(wald.pvalue))
+        chi2, p, dof, _ = chi2_contingency(pd.crosstab(sub["country"], sub[column]))
+        add("country independent of video", chi2, dof, p)
+        add("multinomial logit omnibus", *multinomial_omnibus(sub, column))
+        for outcome in OUTCOMES:
+            chi2, p, dof, _ = chi2_contingency(pd.crosstab(sub[column], sub[outcome].isna()))
+            add(f"missing {outcome} independent of video", chi2, dof, p)
+    return pd.DataFrame(mean_rows), pd.DataFrame(test_rows)
+
+
+# Part F: the replication code's video-type analysis ----------------------------
 
 def authors_video_type(df):
     """Reproduce the unreported `video1_clean` regression and re-estimate it by arm.
@@ -473,12 +629,14 @@ def main():
     """Run all parts of the extension and save the tables."""
     df = load_data()
     comp = competition_sample(df)
+    balance_means, balance_tests = balance(df)
 
     results = {
         "ext_assignment.csv": assignment_table(df),
         "ext_competition_independence.csv": independence_test(comp),
         "ext_competition_videos.csv": video_effects(comp),
         "ext_competition_joint_tests.csv": joint_tests(comp),
+        "ext_competition_range.csv": range_uncertainty(comp),
         "ext_competition_types.csv": type_effects(comp),
         "ext_content_type.csv": content_contrasts(df, comp, OUTCOMES),
         "ext_companion_position.csv": companion_position(df),
@@ -486,6 +644,9 @@ def main():
         "ext_mechanisms_content.csv": mechanism_contrasts(df, comp),
         "ext_mechanisms_baseline.csv": mechanism_baseline(df),
         "ext_mechanisms_videos.csv": mechanism_videos(comp),
+        "ext_mechanisms_index.csv": mechanism_index(df, comp),
+        "ext_balance_means.csv": balance_means,
+        "ext_balance_tests.csv": balance_tests,
         "ext_authors_video_type.csv": authors_video_type(df),
     }
 

@@ -63,6 +63,7 @@ cd paper && latexmk -pdf main.tex
 | `output/tables/ext_competition_independence.csv` | Test that US and Chinese videos were assigned independently in the Competition arm |
 | `output/tables/ext_competition_videos.csv` | Effect of each video relative to its country's `pol2`, Competition arm (paper Figure 2, Table A1) |
 | `output/tables/ext_competition_joint_tests.csv` | Wald tests that a country's four videos are equally persuasive (Table A1) |
+| `output/tables/ext_competition_range.csv` | Bias and basic bootstrap interval for the range of the four CGTN videos' effects (Section 4.5) |
 | `output/tables/ext_competition_types.csv` | Economic vs. political videos with pooled political reference, Competition arm (Table A2) |
 | `output/tables/ext_content_type.csv` | Economic video vs. `pol1` in the single-country and Competition arms, with MDEs (paper Table 5, Figure 3) |
 | `output/tables/ext_companion_position.csv` | Position check: companion contrast with `pol2` held in the second slot, and the effect of `pol2`'s slot (Table A4) |
@@ -70,7 +71,10 @@ cd paper && latexmk -pdf main.tex
 | `output/tables/ext_mechanisms_content.csv` | Economic video vs. `china_pol1` on eight perceptions of China, both designs (paper Figure 4) |
 | `output/tables/ext_mechanisms_baseline.csv` | Control-group level of each perception of China |
 | `output/tables/ext_mechanisms_videos.csv` | Each CGTN video's effect on perceptions relative to `china_pol2` (Table A3) |
-| `output/tables/ext_authors_video_type.csv` | The replication code's unreported video-type regression, pooled and by arm (Table A5) |
+| `output/tables/ext_mechanisms_index.csv` | Summary index of the eight perceptions (equally and inverse-covariance weighted): each CGTN video vs. `china_pol2` (Table A3) |
+| `output/tables/ext_balance_means.csv` | Covariate means and missing-outcome rates by video (Table A5) |
+| `output/tables/ext_balance_tests.csv` | Balance, country, omnibus, and missingness tests by video (Table A5) |
+| `output/tables/ext_authors_video_type.csv` | The replication code's unreported video-type regression, pooled and by arm (Table A6) |
 | `output/figures/fig1_main_effects.{pdf,png}` | Covariate-adjusted treatment effects (replicates the paper's main results figure) |
 | `output/figures/fig2_competition_videos.{pdf,png}` | Video-level effects in the Competition arm |
 | `output/figures/fig3_content_type.{pdf,png}` | Economic video vs. `pol1` in two designs |
