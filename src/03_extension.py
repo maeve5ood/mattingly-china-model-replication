@@ -311,7 +311,10 @@ def range_uncertainty(comp, draws=20000, seed=353):
         theta = result.params[names].to_numpy()
         covariance = result.cov_params().loc[names, names].to_numpy()
         observed = np.ptp(np.append(theta, 0.0))
-        simulated = rng.multivariate_normal(theta, covariance, size=draws)
+        # Cholesky rather than the default SVD: the SVD's signs and rotations
+        # depend on the linear-algebra library, so the same seed would give
+        # different draws on different machines.
+        simulated = rng.multivariate_normal(theta, covariance, size=draws, method="cholesky")
         ranges = np.ptp(np.column_stack([simulated, np.zeros(draws)]), axis=1)
         low, high = np.percentile(2 * observed - ranges, [2.5, 97.5])
         rows.append({
