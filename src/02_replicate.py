@@ -20,6 +20,9 @@ import statsmodels.formula.api as smf
 ROOT = Path(__file__).resolve().parents[1]
 PROCESSED = ROOT / "data" / "processed"
 TABLES = ROOT / "output" / "tables"
+# Ten significant digits: far more than the paper reports, but few enough that
+# floating-point noise across machines (~1e-14) does not change the files.
+CSV_FLOAT_FORMAT = "%.10g"
 
 OUTCOMES = ["political_model", "econ_model", "world_leader"]
 TREATMENT = 'C(treatment, Treatment("Control"))'
@@ -158,10 +161,14 @@ def main():
     shares = share_prefer_china(df)
 
     TABLES.mkdir(parents=True, exist_ok=True)
-    coefs.to_csv(TABLES / "primary_coefficients.csv", index=False)
-    check.to_csv(TABLES / "table_a3_check.csv", index=False)
-    standardized.to_csv(TABLES / "standardized_effects.csv", index=False)
-    shares.to_csv(TABLES / "share_prefer_china.csv", index=False)
+    outputs = {
+        "primary_coefficients.csv": coefs,
+        "table_a3_check.csv": check,
+        "standardized_effects.csv": standardized,
+        "share_prefer_china.csv": shares,
+    }
+    for filename, table in outputs.items():
+        table.to_csv(TABLES / filename, index=False, float_format=CSV_FLOAT_FORMAT)
 
     print(check.to_string(index=False))
     print()

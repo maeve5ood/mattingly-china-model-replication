@@ -1,9 +1,9 @@
 outcome,label,mean,share_agree,n
-mech_competent_china,Selects competent leaders,4.640868974881195,0.34147997284453496,1473
-mech_growth_china,Delivers economic growth,5.437288135593221,0.5491525423728814,1475
-mech_stability_china,Political stability,4.753564154786151,0.3496266123557366,1473
-mech_responsive_china,Responsive to people's needs,4.582484725050916,0.3394433129667346,1473
-mech_turnover_china,Ruling party sometimes loses,3.924694708276798,0.18588873812754408,1474
-mech_freespech_china,Right to free speech,3.676829268292683,0.2086720867208672,1476
-mech_dem_china,Democratic system,3.7293080054274084,0.21777476255088196,1474
-mech_vote_china,Adults vote for national leader,4.5271370420624155,0.3683853459972863,1474
+mech_competent_china,Selects competent leaders,4.640868975,0.3414799728,1473
+mech_growth_china,Delivers economic growth,5.437288136,0.5491525424,1475
+mech_stability_china,Political stability,4.753564155,0.3496266124,1473
+mech_responsive_china,Responsive to people's needs,4.582484725,0.339443313,1473
+mech_turnover_china,Ruling party sometimes loses,3.924694708,0.1858887381,1474
+mech_freespech_china,Right to free speech,3.676829268,0.2086720867,1476
+mech_dem_china,Democratic system,3.729308005,0.2177747626,1474
+mech_vote_china,Adults vote for national leader,4.527137042,0.368385346,1474

@@ -28,16 +28,6 @@ PAPER = ROOT / "paper" / "main.tex"
 PM, EM = "political_model", "econ_model"
 CHINA_TERMS = ["china_econ1", "china_econ2", "china_pol1"]
 US_TERMS = ["us_econ1", "us_econ2", "us_pol1"]
-PERCEPTIONS = {
-    "mech_competent_china": "Selects competent leaders",
-    "mech_growth_china": "Delivers economic growth",
-    "mech_stability_china": "Political stability",
-    "mech_responsive_china": "Responsive to people's needs",
-    "mech_turnover_china": "Ruling party sometimes loses",
-    "mech_freespech_china": "Right to free speech",
-    "mech_dem_china": "Democratic system",
-    "mech_vote_china": "Adults vote for national leader",
-}
 
 
 def squash(text):
@@ -78,18 +68,22 @@ def pcell(p):
 
 
 def count(n):
+    """A count with thousands separators, e.g. 6,276."""
     return f"{int(n):,}"
 
 
 def vid(name):
+    """A video name in the paper's `\\vid{}` macro, with underscores escaped."""
     return "\\vid{" + name.replace("_", "\\_") + "}"
 
 
 def read(name):
+    """Read one of the output tables by its name, without the .csv extension."""
     return pd.read_csv(TABLES / f"{name}.csv")
 
 
 def main():
+    """Rebuild each reported number from the outputs and check it against the paper."""
     flow = read("sample_flow").set_index("stage")["n"]
     coef = read("primary_coefficients")
     table_a3 = read("table_a3_check")
@@ -100,6 +94,7 @@ def main():
     videos = read("ext_competition_videos")
     joint = read("ext_competition_joint_tests")
     ranges = read("ext_competition_range").set_index("outcome")
+    dispersion = read("ext_competition_dispersion").set_index(["outcome", "measure"])
     types = read("ext_competition_types")
     content = read("ext_content_type")
     position = read("ext_companion_position")
@@ -207,7 +202,7 @@ def main():
     passage(s, f"missing for {missing.min() * 100:.1f} to {missing.max() * 100:.1f} percent")
     missing_tests = balance_tests[balance_tests.test.str.startswith("missing")]
     passage(s, f"($p$-values between {missing_tests.p_value.min():.2f} and {missing_tests.p_value.max():.2f})")
-    passage("Intro", "Because these assignments are random (balance tests in Section~\\ref{sec:assignment} support this)")
+    passage("Intro", "the observed assignment frequencies and balance tests are consistent with this (Section~\\ref{sec:assignment})")
 
     # Section 4.5 ----------------------------------------------------------------
     s = "Sec 4.5"
@@ -230,6 +225,13 @@ def main():
     passage(s, f"(joint $p = {jt(PM, 'us', 'p_value'):.2f}$; range {jt(PM, 'us', 'range'):.2f} points)")
     passage(s, f"($p = {jt(EM, 'us', 'p_value'):.3f}$; Holm-adjusted $p = {jt(EM, 'us', 'p_holm'):.3f}$)")
     claim(s, "both US economic videos below us_pol2 on the economic model", v(EM, "us_econ1") < 0 and v(EM, "us_econ2") < 0)
+    pr, er = dispersion.loc[(PM, "range")], dispersion.loc[(EM, "range")]
+    passage(s, f"exceeds that of the four State Department videos by {pr.difference:.2f} points on the political model "
+               f"(basic 95 percent bootstrap interval {pr.ci_low:.2f} to {pr.ci_high:.2f}) and by {er.difference:.2f} points "
+               f"on the economic model ({er.ci_low:.2f} to {er.ci_high:.2f})")
+    claim(s, "CGTN effects more dispersed than US effects: range and SD intervals exclude zero", (dispersion.ci_low > 0).all())
+    claim(s, "range of each country's effects matches the joint-test table",
+          all(abs(dispersion.loc[(o, "range"), c] - jt(o, k, "range")) < 1e-9 for o in (PM, EM) for c, k in [("china", "china"), ("us", "us")]))
 
     # Section 4.6, Table 5, Table A4 --------------------------------------------
     s = "Sec 4.6"
@@ -273,6 +275,8 @@ def main():
     passage(s, f"(${pz('China', PM, order):.2f}$, SE {pz('China', PM, order, 'std_error'):.2f}, and "
                f"${pz('China', EM, order):.2f}$, SE {pz('China', EM, order, 'std_error'):.2f})")
     claim(s, "no order effect distinguishable from zero", (position[position.term.str.startswith(order)].p_value > 0.05).all())
+    order_se = position[(position.arm == "China") & position.term.str.startswith(order)].std_error
+    passage(s, f"an order effect of about {2.8016 * order_se.max():.1f} points could go undetected")
     for arm in ("China", "USA"):
         for start, label in [(econ, "Economic vs.\\ \\vid{pol1}, \\vid{pol2} second for all"),
                              (order, "\\vid{pol2} first vs.\\ second, political pairs")]:
@@ -360,7 +364,8 @@ def main():
                         f"\\multicolumn{{2}}{{c}}{{{count(ty(EM, 'China economic video', 'n'))}}}")
 
     # Table A3 -------------------------------------------------------------------
-    for outcome, label in PERCEPTIONS.items():
+    # Item labels and their order come from 03_extension.py, via the baseline table.
+    for outcome, label in baseline["label"].items():
         rows = mech_videos[mech_videos.outcome == outcome].set_index("term")
         passage("Table A3", f"{label} & " + " & ".join(est(rows.loc[t, 'estimate'], rows.loc[t, 'std_error'], 2)
                                                       for t in CHINA_TERMS) + " \\\\")

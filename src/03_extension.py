@@ -1,79 +1,27 @@
-"""Extension: unbundle the treatments into message-level effects.
+"""Extension: unbundle the treatments into message-level effects (Section 4).
 
-The paper estimates the effect of each treatment arm as a bundle of two videos.
-Within arms, the specific videos were also assigned at random, which allows
-causal comparisons across individual messages that the published paper and
-appendix do not report.
+Within each arm, the specific videos were also randomized, so individual
+messages can be compared causally. In the China and USA arms every respondent
+saw `pol2` plus a randomized companion (`pol1`, `econ1`, or `econ2`); in the
+Competition arm, one US and one Chinese video were drawn independently.
 
-A. Assignment structure. In the China and USA arms, `video1` is drawn from all
-   four of the country's videos and `video2` is a political video: `pol2`,
-   unless `video1` is `pol2`, in which case `pol1`. Every respondent therefore
-   saw `pol2`, and the randomized "companion" is `pol1` (about 50%), `econ1`
-   or `econ2` (about 25% each). In the Competition arm, one US and one Chinese
-   video were drawn independently from all four (a 4x4 factorial).
-
-B. Message heterogeneity (Competition arm). The effect of each video relative
-   to its country's `pol2`, with joint Wald tests that a country's four videos
-   are equally persuasive. The range of the four Chinese videos' effects is an
-   extreme of noisy estimates, so its bias and a basic 95% interval are
-   computed by a parametric bootstrap.
-
-C. Economic vs. political content in two designs. Within the China and USA
-   arms, an economic vs. a political companion (holding `pol2` fixed); within
-   the Competition arm, the average economic video vs. `pol1`. Both contrasts
-   compare economic content with `pol1`, in independent samples.
-
-   Position check: the codebook labels `video1` as the first video watched.
-   If that is literal, economic companions always played before `pol2`, while
-   `pol1` played before `pol2` only half the time. The contrast is therefore
-   re-estimated among respondents with `pol2` in the second slot, and the
-   effect of `pol2`'s slot is estimated among political-political pairs.
-
-D. Mechanisms (exploratory). The same contrasts on the eight perceptions of
-   China that the authors measure after treatment, plus each Chinese video's
-   effect on those perceptions relative to `china_pol2`, both item by item and
-   on a standardized summary index of the eight items (equally weighted, as in
-   Kling, Liebman, and Katz 2007, and inverse-covariance weighted, as in
-   Anderson 2008). The index is re-estimated dropping each item in turn, to
-   check that no single item drives it. For comparison, the
-   single-country contrast is also estimated on perceptions of each arm's own
-   country (China arm: China; USA arm: United States).
-
-E. Balance and missing outcomes. Pre-treatment covariate means and missing-
-   outcome rates by video, for each way respondents were divided by video,
-   with tests that they do not differ across videos. For the test that video is
-   independent of country, the lower-tail p-value is also reported, which is
-   small when videos are spread across countries more evenly than independent
-   draws would usually produce.
-
-F. The replication code's video-type analysis. `7. mechanism_analysis.R`
-   estimates effects by `video1_clean`, which the published paper does not
-   report. In the Competition arm `video1` is always the US video, so that
-   specification pools Competition respondents with the USA arm. This part
-   reproduces it and re-estimates it with the arms kept separate.
+Parts, with the parts of the paper they produce:
+    A. Assignment structure and its checks (Section 4.3, Table 4)
+    B. Effect of each video in the Competition arm (Section 4.5, Figure 2,
+       Tables 3, A1, A2)
+    C. Economic content vs. `pol1` in two designs, with a video-order check
+       (Section 4.6, Figure 3, Tables 5, A4)
+    D. Perceptions of China, exploratory (Section 4.7, Figure 4, Table A3)
+    E. Balance and missing outcomes by video (Section 4.3, Table A5)
+    F. The replication code's unreported video-type regression (Appendix B,
+       Table A6)
 
 All models use the covariates and HC2 standard errors of the primary analysis.
-p-values are adjusted within each family of tests using Holm and
-Benjamini-Hochberg, as in the authors' appendix.
+p-values are adjusted within each family of tests (Holm and Benjamini-Hochberg),
+as in the authors' appendix.
 
 Input:  data/processed/clean.parquet
-Output: output/tables/ext_assignment.csv
-        output/tables/ext_competition_independence.csv
-        output/tables/ext_competition_videos.csv
-        output/tables/ext_competition_joint_tests.csv
-        output/tables/ext_competition_range.csv
-        output/tables/ext_competition_types.csv
-        output/tables/ext_content_type.csv
-        output/tables/ext_companion_position.csv
-        output/tables/ext_companion_mechanisms.csv
-        output/tables/ext_mechanisms_content.csv
-        output/tables/ext_mechanisms_baseline.csv
-        output/tables/ext_mechanisms_videos.csv
-        output/tables/ext_mechanisms_index.csv
-        output/tables/ext_mechanisms_index_loo.csv
-        output/tables/ext_balance_means.csv
-        output/tables/ext_balance_tests.csv
-        output/tables/ext_authors_video_type.csv
+Output: output/tables/ext_*.csv (listed in `main()` and the README)
 """
 
 from pathlib import Path
@@ -89,24 +37,40 @@ from statsmodels.stats.multitest import multipletests
 ROOT = Path(__file__).resolve().parents[1]
 PROCESSED = ROOT / "data" / "processed"
 TABLES = ROOT / "output" / "tables"
+# Ten significant digits: far more than the paper reports, but few enough that
+# floating-point noise across machines (~1e-14) does not change the files.
+CSV_FLOAT_FORMAT = "%.10g"
 
 OUTCOMES = ["political_model", "econ_model"]
 # Same adjustment set as the primary analysis (02_replicate.py).
 COVARIATES = "C(country) + gender + age + education + national_pride + leftright"
 
-# Perceptions of China measured after treatment (1-7 agreement scale).
-# Labels abbreviate the item wording in Appendix D.2 of the paper. Variable
-# names follow the authors' data, including the `freespech` typo.
-MECHANISMS = {
-    "mech_competent_china": "Selects competent leaders",
-    "mech_growth_china": "Delivers economic growth",
-    "mech_stability_china": "Political stability",
-    "mech_responsive_china": "Responsive to people's needs",
-    "mech_turnover_china": "Ruling party sometimes loses",
-    "mech_freespech_china": "Right to free speech",
-    "mech_dem_china": "Democratic system",
-    "mech_vote_china": "Adults vote for national leader",
+# Perceptions measured after treatment (1-7 agreement scale), asked about both
+# China and the US; `{c}` is "china" or "us". Labels abbreviate the item
+# wording in Appendix D.2 of the paper.
+PERCEPTION_ITEMS = {
+    "mech_competent_{c}": "Selects competent leaders",
+    "mech_growth_{c}": "Delivers economic growth",
+    "mech_stability_{c}": "Political stability",
+    "mech_responsive_{c}": "Responsive to people's needs",
+    "mech_turnover_{c}": "Ruling party sometimes loses",
+    "mech_freespeech_{c}": "Right to free speech",
+    "mech_dem_{c}": "Democratic system",
+    "mech_vote_{c}": "Adults vote for national leader",
 }
+# The authors' data misspell one variable name.
+MISSPELLED = {"mech_freespeech_china": "mech_freespech_china"}
+
+
+def perception_variable(template, country):
+    """Name of a perception item's variable for `country` ("china" or "us")."""
+    variable = template.format(c=country)
+    return MISSPELLED.get(variable, variable)
+
+
+# Perceptions of China, the outcomes of the mechanism analysis (Part D).
+MECHANISMS = {perception_variable(template, "china"): label
+              for template, label in PERCEPTION_ITEMS.items()}
 
 # Video indicators in the Competition arm, with `pol2` as each country's reference.
 CHINA_VIDEO = 'C(video2, Treatment("china_pol2"))'
@@ -298,10 +262,8 @@ def joint_tests(comp):
 def range_uncertainty(comp, draws=20000, seed=353):
     """Bias and basic bootstrap interval for the range of the four Chinese videos.
 
-    The range (largest minus smallest effect, with `china_pol2` at zero) picks
-    the extremes of noisy estimates, so it is biased upward. A parametric
-    bootstrap draws the three coefficients from their estimated sampling
-    distribution, recomputes the range, and compares it with the observed one.
+    The range of noisy estimates is biased upward, so a parametric bootstrap
+    redraws the three coefficients relative to `china_pol2` (Section 4.5).
     """
     rng = np.random.default_rng(seed)
     names = list(video_terms("china"))
@@ -327,6 +289,46 @@ def range_uncertainty(comp, draws=20000, seed=353):
             "ci_high": high,
             "draws": draws,
         })
+    return pd.DataFrame(rows)
+
+
+def dispersion_comparison(comp, draws=20000, seed=354):
+    """Test whether the CGTN videos' effects are more dispersed than the US videos'.
+
+    Dispersion is the range or SD of a country's four effects (`pol2` at zero).
+    The CGTN-minus-US difference gets a basic interval from a parametric
+    bootstrap of all six coefficients, which share one regression (Section 4.5).
+    """
+    rng = np.random.default_rng(seed)
+    china, us = list(video_terms("china")), list(video_terms("us"))
+    names = china + us
+    measures = {"range": lambda x: np.ptp(x, axis=-1), "sd": lambda x: np.std(x, axis=-1, ddof=1)}
+
+    def with_reference(values):
+        return np.concatenate([values, np.zeros(values.shape[:-1] + (1,))], axis=-1)
+
+    rows = []
+    for outcome in OUTCOMES:
+        result = fit_video_model(comp, outcome)
+        theta = result.params[names].to_numpy()
+        covariance = result.cov_params().loc[names, names].to_numpy()
+        simulated = rng.multivariate_normal(theta, covariance, size=draws, method="cholesky")
+        for measure, statistic in measures.items():
+            observed_china = statistic(with_reference(theta[:3]))
+            observed_us = statistic(with_reference(theta[3:]))
+            observed = observed_china - observed_us
+            differences = statistic(with_reference(simulated[:, :3])) - statistic(with_reference(simulated[:, 3:]))
+            low, high = np.percentile(2 * observed - differences, [2.5, 97.5])
+            rows.append({
+                "outcome": outcome,
+                "measure": measure,
+                "china": observed_china,
+                "us": observed_us,
+                "difference": observed,
+                "ci_low": low,
+                "ci_high": high,
+                "draws": draws,
+            })
     return pd.DataFrame(rows)
 
 
@@ -391,16 +393,11 @@ def content_contrasts(df, comp, outcomes):
 
 
 def companion_position(df):
-    """Check whether the companion contrast is confounded with video position.
+    """Check that the companion contrast is not driven by video order (Table A4).
 
-    If `video1` is the first video shown, as the codebook states, economic
-    companions always played before `pol2`, while `pol1` played before `pol2`
-    only half the time. Two checks for each single-country arm:
-
-    1. Re-estimate the companion contrast among respondents with `pol2` in the
-       second slot, so position is the same in both groups.
-    2. Among political-political pairs, compare `pol2` in the first vs. the
-       second slot, which isolates any effect of position itself.
+    If `video1` played first, as the codebook says, economic companions always
+    preceded `pol2`. So the contrast is re-estimated with `pol2` second for
+    everyone, and `pol2`'s slot is estimated among political-political pairs.
     """
     tables = []
     for arm, prefix in [("China", "china"), ("USA", "us")]:
@@ -425,20 +422,6 @@ def companion_position(df):
 
 # Part D: mechanisms -------------------------------------------------------------
 
-# Perception items asked about both countries; `{c}` is "china" or "us".
-# The China free-speech variable is misspelled in the authors' data.
-PERCEPTION_ITEMS = {
-    "mech_competent_{c}": "Selects competent leaders",
-    "mech_growth_{c}": "Delivers economic growth",
-    "mech_stability_{c}": "Political stability",
-    "mech_responsive_{c}": "Responsive to people's needs",
-    "mech_turnover_{c}": "Ruling party sometimes loses",
-    "mech_freespeech_{c}": "Right to free speech",
-    "mech_dem_{c}": "Democratic system",
-    "mech_vote_{c}": "Adults vote for national leader",
-}
-
-
 def companion_mechanisms(df):
     """Single-country companion contrast on perceptions of the arm's own country.
 
@@ -452,9 +435,7 @@ def companion_mechanisms(df):
         arm_df = add_companion(df[df["treatment"] == arm], prefix)
         rows = []
         for template, label in PERCEPTION_ITEMS.items():
-            variable = template.format(c=prefix)
-            if variable == "mech_freespeech_china":
-                variable = "mech_freespech_china"
+            variable = perception_variable(template, prefix)
             row = extract(fit(arm_df, f"{variable} ~ companion_econ + {COVARIATES}"),
                           {"companion_econ": label})
             row.insert(0, "outcome", variable)
@@ -464,6 +445,7 @@ def companion_mechanisms(df):
         table.insert(0, "arm", arm)
         tables.append(table)
     return pd.concat(tables, ignore_index=True)
+
 
 def mechanism_contrasts(df, comp):
     """Economic content vs. `pol1` on each perception of China, in both designs."""
@@ -496,14 +478,11 @@ def mechanism_videos(comp):
 
 
 def mechanism_index(df, comp, items=None):
-    """Effect of each Chinese video on a summary index of the eight perceptions.
+    """Effect of each Chinese video on a summary index of the perceptions (Table A3).
 
-    The items are correlated and every comparison shares `china_pol2` as the
-    reference, so item-by-item results are not independent evidence. Items are
-    standardized by the control group's mean and SD and combined two ways:
-    an equally weighted mean (Kling, Liebman, and Katz 2007) and an
-    inverse-covariance weighted mean (Anderson 2008), with weights from the
-    control group. Respondents need all items. `items` defaults to all eight.
+    Items are standardized and weighted using the control group, then averaged
+    equally (Kling, Liebman, and Katz 2007) or by inverse covariance (Anderson
+    2008). Respondents need all items. `items` defaults to all eight.
     """
     items = list(MECHANISMS) if items is None else list(items)
     control = df[df["treatment"] == "Control"]
@@ -579,13 +558,11 @@ def multinomial_omnibus(sub, column):
 
 
 def balance(df):
-    """Covariate means and missing-outcome rates by video, with tests.
+    """Covariate means and missing-outcome rates by video, with tests (Table A5).
 
-    Covariates are the authors' imputed values. Tests, for each grouping:
-    equal means of each covariate (Wald, HC2), country independent of video
-    (chi-squared, with the lower-tail p-value as a check for a more-even-than-
-    chance spread), a multinomial-logit omnibus test, and missing outcomes
-    independent of video (chi-squared).
+    Covariates are the authors' imputed values. Per grouping: equal covariate
+    means, country independent of video (lower tail too, which flags a
+    more-even-than-chance spread), a multinomial-logit omnibus, and missingness.
     """
     mean_rows, test_rows = [], []
     for label, sub, column in video_groupings(df):
@@ -657,6 +634,7 @@ def main():
         "ext_competition_videos.csv": video_effects(comp),
         "ext_competition_joint_tests.csv": joint_tests(comp),
         "ext_competition_range.csv": range_uncertainty(comp),
+        "ext_competition_dispersion.csv": dispersion_comparison(comp),
         "ext_competition_types.csv": type_effects(comp),
         "ext_content_type.csv": content_contrasts(df, comp, OUTCOMES),
         "ext_companion_position.csv": companion_position(df),
@@ -673,7 +651,7 @@ def main():
 
     TABLES.mkdir(parents=True, exist_ok=True)
     for filename, table in results.items():
-        table.to_csv(TABLES / filename, index=False)
+        table.to_csv(TABLES / filename, index=False, float_format=CSV_FLOAT_FORMAT)
         print(f"--- {filename}")
         print(table.round(3).to_string(index=False))
         print()

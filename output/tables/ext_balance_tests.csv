@@ -1,41 +1,41 @@
 grouping,test,statistic,df,p_value
-China arm,equal means: gender,2.5069561514857233,3,0.4740352626199066
-China arm,equal means: age,0.42888300824717723,3,0.9342133896299387
-China arm,equal means: education,3.7035092673744185,3,0.29531087242725645
-China arm,equal means: national_pride,2.765419258214644,3,0.4292242043313508
-China arm,equal means: leftright,2.2188163996013035,3,0.5282516431586521
-China arm,country independent of video,50.35206619262121,54,0.6158809315150077
-China arm,"country independent of video, lower tail",50.35206619262121,54,0.3841190684849924
-China arm,multinomial logit omnibus,66.57516021128777,69,0.5603781001665271
-China arm,missing political_model independent of video,5.157467409952055,3,0.16062313302823855
-China arm,missing econ_model independent of video,4.792401632115245,3,0.18764513796033017
-USA arm,equal means: gender,0.7640522236812811,3,0.8580445041263722
-USA arm,equal means: age,2.577329572402559,3,0.4614778343210749
-USA arm,equal means: education,3.7590076769799707,3,0.28869036537204085
-USA arm,equal means: national_pride,2.821875884075945,3,0.4199114064017042
-USA arm,equal means: leftright,7.004630972024536,3,0.07175031405498397
-USA arm,country independent of video,29.94146827343446,54,0.9967712856258136
-USA arm,"country independent of video, lower tail",29.94146827343446,54,0.0032287143741864042
-USA arm,multinomial logit omnibus,50.54138328004228,69,0.9535442247704713
-USA arm,missing political_model independent of video,4.6832446211877485,3,0.19651618022478942
-USA arm,missing econ_model independent of video,4.948468884310667,3,0.1756096293412566
-"Competition arm, Chinese video",equal means: gender,2.970646830318985,3,0.39617303400630144
-"Competition arm, Chinese video",equal means: age,0.8146823329592773,3,0.8459520859170038
-"Competition arm, Chinese video",equal means: education,1.0937062869821053,3,0.7785936242327464
-"Competition arm, Chinese video",equal means: national_pride,3.0957676142663932,3,0.37709408687223234
-"Competition arm, Chinese video",equal means: leftright,1.6558888769061286,3,0.6467848144415813
-"Competition arm, Chinese video",country independent of video,62.066178605626945,54,0.2106925275516995
-"Competition arm, Chinese video","country independent of video, lower tail",62.066178605626945,54,0.7893074724483006
-"Competition arm, Chinese video",multinomial logit omnibus,74.57573867169049,69,0.3019354365894653
-"Competition arm, Chinese video",missing political_model independent of video,4.165040935120203,3,0.24418533996959044
-"Competition arm, Chinese video",missing econ_model independent of video,4.130151263457588,3,0.24774877347113516
-"Competition arm, US video",equal means: gender,1.8130493768740419,3,0.6120993706982956
-"Competition arm, US video",equal means: age,0.6251572123502448,3,0.8906498203120606
-"Competition arm, US video",equal means: education,1.3529823004323636,3,0.716591980196815
-"Competition arm, US video",equal means: national_pride,3.4112299690953622,3,0.3324591044189636
-"Competition arm, US video",equal means: leftright,0.5014171866970971,3,0.9185799517815657
-"Competition arm, US video",country independent of video,54.91526629522185,54,0.4397136428126027
-"Competition arm, US video","country independent of video, lower tail",54.91526629522185,54,0.5602863571873973
-"Competition arm, US video",multinomial logit omnibus,62.517675317756584,69,0.6959754677474065
-"Competition arm, US video",missing political_model independent of video,4.3456745688905425,3,0.22647578708020236
-"Competition arm, US video",missing econ_model independent of video,4.855613783355716,3,0.1826803069144274
+China arm,equal means: gender,2.506956151,3,0.4740352626
+China arm,equal means: age,0.4288830082,3,0.9342133896
+China arm,equal means: education,3.703509267,3,0.2953108724
+China arm,equal means: national_pride,2.765419258,3,0.4292242043
+China arm,equal means: leftright,2.2188164,3,0.5282516432
+China arm,country independent of video,50.35206619,54,0.6158809315
+China arm,"country independent of video, lower tail",50.35206619,54,0.3841190685
+China arm,multinomial logit omnibus,66.57516021,69,0.5603781002
+China arm,missing political_model independent of video,5.15746741,3,0.160623133
+China arm,missing econ_model independent of video,4.792401632,3,0.187645138
+USA arm,equal means: gender,0.7640522237,3,0.8580445041
+USA arm,equal means: age,2.577329572,3,0.4614778343
+USA arm,equal means: education,3.759007677,3,0.2886903654
+USA arm,equal means: national_pride,2.821875884,3,0.4199114064
+USA arm,equal means: leftright,7.004630972,3,0.07175031405
+USA arm,country independent of video,29.94146827,54,0.9967712856
+USA arm,"country independent of video, lower tail",29.94146827,54,0.003228714374
+USA arm,multinomial logit omnibus,50.54138328,69,0.9535442248
+USA arm,missing political_model independent of video,4.683244621,3,0.1965161802
+USA arm,missing econ_model independent of video,4.948468884,3,0.1756096293
+"Competition arm, Chinese video",equal means: gender,2.97064683,3,0.396173034
+"Competition arm, Chinese video",equal means: age,0.814682333,3,0.8459520859
+"Competition arm, Chinese video",equal means: education,1.093706287,3,0.7785936242
+"Competition arm, Chinese video",equal means: national_pride,3.095767614,3,0.3770940869
+"Competition arm, Chinese video",equal means: leftright,1.655888877,3,0.6467848144
+"Competition arm, Chinese video",country independent of video,62.06617861,54,0.2106925276
+"Competition arm, Chinese video","country independent of video, lower tail",62.06617861,54,0.7893074724
+"Competition arm, Chinese video",multinomial logit omnibus,74.57573867,69,0.3019354366
+"Competition arm, Chinese video",missing political_model independent of video,4.165040935,3,0.24418534
+"Competition arm, Chinese video",missing econ_model independent of video,4.130151263,3,0.2477487735
+"Competition arm, US video",equal means: gender,1.813049377,3,0.6120993707
+"Competition arm, US video",equal means: age,0.6251572124,3,0.8906498203
+"Competition arm, US video",equal means: education,1.3529823,3,0.7165919802
+"Competition arm, US video",equal means: national_pride,3.411229969,3,0.3324591044
+"Competition arm, US video",equal means: leftright,0.5014171867,3,0.9185799518
+"Competition arm, US video",country independent of video,54.9152663,54,0.4397136428
+"Competition arm, US video","country independent of video, lower tail",54.9152663,54,0.5602863572
+"Competition arm, US video",multinomial logit omnibus,62.51767532,69,0.6959754677
+"Competition arm, US video",missing political_model independent of video,4.345674569,3,0.2264757871
+"Competition arm, US video",missing econ_model independent of video,4.855613783,3,0.1826803069

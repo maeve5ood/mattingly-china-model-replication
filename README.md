@@ -83,6 +83,7 @@ Table, figure, and section numbers refer to [`paper/main.pdf`](paper/main.pdf).
 | `output/tables/ext_competition_videos.csv` | Effect of each video relative to its country's `pol2`, Competition arm | Figure 2, Tables 3 and A1 |
 | `output/tables/ext_competition_joint_tests.csv` | Wald tests that a country's four videos are equally persuasive | Table A1 |
 | `output/tables/ext_competition_range.csv` | Bias and basic bootstrap interval for the range of the four CGTN videos' effects | Section 4.5 |
+| `output/tables/ext_competition_dispersion.csv` | Whether the CGTN videos' effects are more dispersed than the US videos' effects (range and SD, bootstrap interval) | Section 4.5 |
 | `output/tables/ext_competition_types.csv` | Economic vs. political videos, pooling each country's political videos, Competition arm | Table A2 |
 | `output/tables/ext_content_type.csv` | Economic video vs. `pol1` in the single-country and Competition arms, with MDEs | Table 5, Figure 3 |
 | `output/tables/ext_companion_position.csv` | Position check: the companion contrast with `pol2` in the second slot, and the effect of `pol2`'s slot | Table A4 |
@@ -99,3 +100,7 @@ Table, figure, and section numbers refer to [`paper/main.pdf`](paper/main.pdf).
 | `output/figures/fig2_competition_videos.{pdf,png}` | Video-level effects in the Competition arm | Figure 2 |
 | `output/figures/fig3_content_type.{pdf,png}` | Economic video vs. `pol1` in two designs | Figure 3 |
 | `output/figures/fig4_mechanisms.{pdf,png}` | Economic video vs. `china_pol1` on perceptions of China | Figure 4 |
+
+## License
+
+The code is released under the [MIT License](LICENSE). The paper (`paper/main.tex` and `paper/main.pdf`) is licensed under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). The data belong to Mattingly et al. and are distributed under the terms of their Dataverse replication package; they are not redistributed here.

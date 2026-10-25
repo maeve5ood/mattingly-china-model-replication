@@ -28,6 +28,9 @@ ROOT = Path(__file__).resolve().parents[1]
 RAW = ROOT / "data" / "raw"
 PROCESSED = ROOT / "data" / "processed"
 TABLES = ROOT / "output" / "tables"
+# Ten significant digits: far more than the paper reports, but few enough that
+# floating-point noise across machines (~1e-14) does not change the files.
+CSV_FLOAT_FORMAT = "%.10g"
 
 # Control first so that it is the reference category, as in the R code.
 TREATMENT_LEVELS = ["Control", "China", "USA", "Competition"]
@@ -122,7 +125,7 @@ def main():
     flow = sample_flow(raw)
     print(flow.to_string(index=False))
     TABLES.mkdir(parents=True, exist_ok=True)
-    flow.to_csv(TABLES / "sample_flow.csv", index=False)
+    flow.to_csv(TABLES / "sample_flow.csv", index=False, float_format=CSV_FLOAT_FORMAT)
 
     df = prepare(raw)
     validate(df)
