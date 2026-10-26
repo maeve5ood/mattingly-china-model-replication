@@ -132,8 +132,8 @@ def main():
     s = "Abstract/Intro"
     claim(s, "all 24 Table A3 cells match the published values",
           len(table_a3) == 24 and table_a3["match"].all())
-    passage(s, f"differ by {jt(PM, 'china', 'range'):.1f} points on preference for China's "
-               "political model and by nearly one point")
+    passage(s, f"differ by {jt(PM, 'china', 'range'):.1f} points on China's political model "
+               "and nearly one point")
     claim(s, "'nearly one point' (economic-model range)", 0.9 <= jt(EM, "china", "range") < 1.0)
     passage(s, f"showed {count(flow['Randomized'])} respondents in "
                f"{df['country'].nunique()} countries")
