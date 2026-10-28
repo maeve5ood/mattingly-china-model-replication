@@ -21,6 +21,8 @@ build_indices = import_module("04_mechanisms").build_indices
 effects = import_module("03_message_effects")
 add_companion, econ_vs_pol1_weights, video_terms = (
     effects.add_companion, effects.econ_vs_pol1_weights, effects.video_terms)
+dispersion_comparison, range_uncertainty = (
+    effects.dispersion_comparison, effects.range_uncertainty)
 
 
 class CompanionTests(unittest.TestCase):
@@ -41,9 +43,11 @@ class CompanionTests(unittest.TestCase):
 
 class ContrastTests(unittest.TestCase):
     def test_content_weights(self):
-        for prefix in ("china", "us"):
-            terms = list(video_terms(prefix))
-            self.assertEqual(econ_vs_pol1_weights(prefix), dict(zip(terms, [0.5, 0.5, -1])))
+        for prefix, column in (("china", "video2"), ("us", "video1")):
+            factor = f'C({column}, Treatment("{prefix}_pol2"))'
+            expected = {f"{factor}[T.{prefix}_econ1]": 0.5, f"{factor}[T.{prefix}_econ2]": 0.5,
+                        f"{factor}[T.{prefix}_pol1]": -1}
+            self.assertEqual(econ_vs_pol1_weights(prefix), expected)
 
     def test_estimate_and_covariance_against_matrix_calculation(self):
         rng = np.random.default_rng(7)
@@ -53,6 +57,39 @@ class ContrastTests(unittest.TestCase):
         weights = np.array([0, 0.5, 0.5, -1])
         self.assertAlmostEqual(row["estimate"], weights @ model.params)
         self.assertAlmostEqual(row["std_error"], np.sqrt(weights @ model.cov_params() @ weights))
+
+
+def video_models(china, us, variance):
+    """Stand-ins for the Competition video models with given coefficients."""
+    names = list(video_terms("china")) + list(video_terms("us"))
+    params = pd.Series(china + us, index=names)
+    covariance = pd.DataFrame(variance * np.eye(6), index=names, columns=names)
+    result = SimpleNamespace(params=params, cov_params=lambda: covariance)
+    return {"political_model": result, "econ_model": result}
+
+
+class BootstrapTests(unittest.TestCase):
+    def test_precise_estimates_give_observed_range_and_dispersion(self):
+        # china effects with pol2 at zero: 0.6, 0.2, -0.4, 0 -> range 1.0;
+        # us effects: 0.1, 0.1, 0.1, 0 -> range 0.1.
+        china, us = [0.6, 0.2, -0.4], [0.1, 0.1, 0.1]
+        models = video_models(china, us, variance=1e-12)
+        ranges = range_uncertainty(models, draws=500)
+        np.testing.assert_allclose(ranges[["observed_range", "ci_low", "ci_high"]], 1.0,
+                                   atol=1e-4)
+        dispersion = dispersion_comparison(models, draws=500).set_index(["outcome", "measure"])
+        sd = np.std(china + [0], ddof=1) - np.std(us + [0], ddof=1)
+        for measure, expected in (("range", 0.9), ("sd", sd)):
+            row = dispersion.loc[("political_model", measure)]
+            np.testing.assert_allclose(row[["difference", "ci_low", "ci_high"]], expected,
+                                       atol=1e-4)
+
+    def test_range_of_equal_effects_is_biased_upward(self):
+        models = video_models([0.] * 3, [0.] * 3, variance=0.01)
+        row = range_uncertainty(models, draws=2000).iloc[0]
+        self.assertEqual(row["observed_range"], 0)
+        self.assertGreater(row["bias"], 0.1)
+        self.assertAlmostEqual(row["bias_corrected_range"], -row["bias"])
 
 
 class IndexTests(unittest.TestCase):

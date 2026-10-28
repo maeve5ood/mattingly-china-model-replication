@@ -86,10 +86,15 @@ def independence_test(comp):
                           "min_cell": int(cells.values.min()), "max_cell": int(cells.values.max())}])
 
 
+def video_term(prefix, video):
+    """statsmodels name of one non-reference video, e.g. ("china", "econ1")."""
+    factor = CHINA_VIDEO if prefix == "china" else US_VIDEO
+    return f"{factor}[T.{prefix}_{video}]"
+
+
 def video_terms(prefix):
     """statsmodels names of the three non-reference videos of one country."""
-    factor = CHINA_VIDEO if prefix == "china" else US_VIDEO
-    return {f"{factor}[T.{prefix}_{v}]": f"{prefix}_{v}" for v in ["econ1", "econ2", "pol1"]}
+    return {video_term(prefix, v): f"{prefix}_{v}" for v in ["econ1", "econ2", "pol1"]}
 
 
 def fit_video_model(comp, outcome):
@@ -240,8 +245,8 @@ def type_effects(comp):
 
 def econ_vs_pol1_weights(prefix):
     """Weights for (average economic video) - pol1 in the Competition video model."""
-    econ1, econ2, pol1 = list(video_terms(prefix))
-    return {econ1: 0.5, econ2: 0.5, pol1: -1}
+    return {video_term(prefix, "econ1"): 0.5, video_term(prefix, "econ2"): 0.5,
+            video_term(prefix, "pol1"): -1}
 
 
 def content_contrasts(df, models, outcomes):
