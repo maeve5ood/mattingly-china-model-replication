@@ -1,8 +1,8 @@
 """Produce figures for the replication and extension.
 
 All figures are coefficient plots: a point estimate with its 95% confidence
-interval. They read only the CSV tables written by 02_replicate.py and
-03_extension.py, so no model is re-estimated here.
+interval. They read only the CSV tables written by replicate.py and
+message_effects.py and mechanisms.py, so no model is re-estimated here.
 
 Input:  output/tables/primary_coefficients.csv
         output/tables/ext_competition_videos.csv
@@ -14,16 +14,14 @@ Output: output/figures/fig1_main_effects.{pdf,png}
         output/figures/fig4_mechanisms.{pdf,png}
 """
 
-from pathlib import Path
-
 import matplotlib
 
 matplotlib.use("Agg")  # render to files without opening a window
 import matplotlib.pyplot as plt
 import pandas as pd
 
-ROOT = Path(__file__).resolve().parents[1]
-TABLES = ROOT / "output" / "tables"
+from analysis_utils import ROOT, TABLES
+
 FIGURES = ROOT / "output" / "figures"
 
 # One color and marker per outcome. The colors were checked for
@@ -110,7 +108,7 @@ def save(fig, name):
 
 
 def fig_main_effects():
-    """Figure 1: covariate-adjusted treatment effects (replication of Table A3)."""
+    """Figure 1: covariate-adjusted treatment effects (replication of Mattingly et al.'s Table A3)."""
     coefs = load_table("primary_coefficients.csv")
     table = coefs[coefs["adjusted"] & (coefs["term"] != "Constant")].rename(columns={"term": "row"})
     table = table[table["outcome"].isin(OUTCOME_STYLE)]

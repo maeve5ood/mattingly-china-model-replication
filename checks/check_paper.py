@@ -444,7 +444,7 @@ def main():
                         f"\\multicolumn{{2}}{{c}}{{{type_n[1]}}}")
 
     # Table A3 -------------------------------------------------------------------
-    # Item labels and their order come from 03_extension.py, via the baseline table.
+    # Item labels and their order come from mechanisms.py, via the baseline table.
     for outcome, label in baseline["label"].items():
         rows = mech_videos[mech_videos.outcome == outcome].set_index("term")
         cells = [est(rows.loc[t, "estimate"], rows.loc[t, "std_error"], 2) for t in CHINA_TERMS]

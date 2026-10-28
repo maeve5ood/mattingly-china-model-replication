@@ -9,6 +9,16 @@ A replication and extension of Mattingly et al. (2025)
 
 The original analysis was written in R. This project reproduces the main results in Python and extends them by *unbundling the treatments*: within each treatment arm, the specific videos a respondent saw were also randomly assigned, which allows causal comparisons of individual messages that the published paper does not report.
 
+## Suggested code review path
+
+For a short coding-sample review, start with:
+
+1. [`src/replicate.py`](src/replicate.py): translation of the authors' primary R models into Python, including a check against all 24 reported coefficients and standard errors.
+2. [`src/message_effects.py`](src/message_effects.py): this project's extension—recover the within-arm assignment structure, estimate individual-video effects, and compare content using explicit linear contrasts and bootstrap uncertainty.
+3. [`src/diagnostics.py`](src/diagnostics.py): supporting balance and missingness checks, with convergence checks for the multinomial models.
+
+The original experiment, cleaned data, primary model specification, and the pooled video-type regression come from Mattingly et al. The message-level comparisons, companion and position analyses, dispersion comparisons, and perception-index sensitivity checks are additions in this project. [`src/mechanisms.py`](src/mechanisms.py) contains the exploratory perception analyses; these estimate effects on perceptions, not causal mediation.
+
 ## Main findings
 
 - **Replication.** All 24 coefficients, standard errors, and sample sizes in the original primary results table (Mattingly et al.'s Table A3) match the published values at two decimals.
@@ -40,7 +50,29 @@ pip install -r requirements.txt
 python run_all.py
 ```
 
-The pipeline runs in about 10 seconds and has been tested on macOS (Apple silicon) and Linux. The last step, `src/05_check_paper.py`, rebuilds every reported number in `paper/main.tex` (each table row and each sentence that reports a result) from the output tables and confirms that it appears in the paper; the run fails if any number no longer matches.
+The pipeline writes the result tables and figures. Runtime depends on the machine and whether the plotting font cache already exists.
+
+To also check the manuscript's reported numbers:
+
+```bash
+python run_all.py --check-paper
+```
+
+Or check an existing set of outputs without re-estimating:
+
+```bash
+python checks/check_paper.py
+```
+
+This auxiliary check rebuilds 177 passages and claims from the outputs and checks them against `paper/main.tex`. It detects inconsistencies between results and manuscript text; it does not independently validate statistical methods. Because some checks match full passages, wording changes may require updating the checker.
+
+Run the focused synthetic tests (no survey data or extra test packages needed):
+
+```bash
+python -m unittest discover -s tests -v
+```
+
+These cover companion identification, linear-contrast estimates and standard errors, index standardization and complete cases, degenerate index inputs, and rejection of failed multinomial fits.
 
 To rebuild the paper after running the pipeline (requires a LaTeX distribution):
 
@@ -51,55 +83,23 @@ cd paper && latexmk -pdf main.tex
 ## Repository structure
 
 ```
-├── run_all.py            # runs the full pipeline
+├── run_all.py              # analysis pipeline; --check-paper adds manuscript checks
 ├── src/
-│   ├── 01_clean.py       # load the data, document the sample, check it against the paper
-│   ├── 02_replicate.py   # main results (Mattingly et al.'s Table A3)
-│   ├── 03_extension.py   # within-arm assignment, video-level effects, perceptions, balance
-│   ├── 04_figures.py     # figures
-│   └── 05_check_paper.py # checks every number in the paper against the outputs
-├── paper/
-│   ├── main.tex          # paper (LaTeX)
-│   └── main.pdf          # compiled paper
-├── data/                 # data (not tracked; see Data above)
-└── output/
-    ├── tables/
-    └── figures/
+│   ├── clean.py            # load, document, and validate the analysis sample
+│   ├── replicate.py        # reproduce the authors' primary models
+│   ├── message_effects.py  # assignment, video effects, and content contrasts
+│   ├── mechanisms.py       # exploratory perceptions and summary indices
+│   ├── diagnostics.py      # balance, missingness, and original-code specification
+│   ├── analysis_utils.py   # shared model settings and table helpers
+│   └── figures.py          # draw figures from result tables
+├── checks/check_paper.py   # optional manuscript consistency checks
+├── tests/test_analysis.py  # focused synthetic checks
+├── paper/                  # LaTeX source and compiled paper
+├── data/                   # not tracked; see Data above
+└── output/                 # tables and figures
 ```
 
-## Outputs
-
-Table, figure, and section numbers refer to [`paper/main.pdf`](paper/main.pdf).
-
-| File | Contents | In the paper |
-|---|---|---|
-| `output/tables/sample_flow.csv` | Respondents screened out before randomization (6,276 randomized) | Table 1 |
-| `output/tables/primary_coefficients.csv` | Effects on preference for China's political model, economic model, and world leadership, with and without covariates | Table 2 |
-| `output/tables/table_a3_check.csv` | Cell-by-cell comparison of all 24 replicated estimates with Mattingly et al.'s Table A3 | Section 3.3 |
-| `output/tables/standardized_effects.csv` | Unadjusted effects in control-group standard deviations | Section 3.3 |
-| `output/tables/share_prefer_china.csv` | Share of respondents preferring China's model, by arm | Section 3.3 |
-| `output/tables/ext_assignment.csv` | Video pairs in the China and USA arms; verifies that `pol2` was always shown | Table 4 |
-| `output/tables/ext_competition_independence.csv` | Test that the US and Chinese videos were assigned independently in the Competition arm | Section 4.3 |
-| `output/tables/ext_competition_videos.csv` | Effect of each video relative to its country's `pol2`, Competition arm | Figure 2, Tables 3 and A1 |
-| `output/tables/ext_competition_joint_tests.csv` | Wald tests that a country's four videos are equally persuasive | Table A1 |
-| `output/tables/ext_competition_range.csv` | Bias and basic bootstrap interval for the range of the four CGTN videos' effects | Section 4.5 |
-| `output/tables/ext_competition_dispersion.csv` | Whether the CGTN videos' effects are more dispersed than the US videos' effects (range and SD, bootstrap interval) | Section 4.5 |
-| `output/tables/ext_competition_types.csv` | Economic vs. political videos, pooling each country's political videos, Competition arm | Table A2 |
-| `output/tables/ext_content_type.csv` | Economic video vs. `pol1` in the single-country and Competition arms, with MDEs | Table 5, Figure 3 |
-| `output/tables/ext_companion_position.csv` | Position check: the companion contrast with `pol2` in the second slot, and the effect of `pol2`'s slot | Table A4 |
-| `output/tables/ext_companion_mechanisms.csv` | Companion contrast on perceptions of each arm's own country, with control-group means | Section 4.7 |
-| `output/tables/ext_mechanisms_content.csv` | Economic video vs. `china_pol1` on eight perceptions of China, both designs | Figure 4 |
-| `output/tables/ext_mechanisms_baseline.csv` | Control-group level of each perception of China | Section 4.7 |
-| `output/tables/ext_mechanisms_videos.csv` | Each CGTN video's effect on perceptions relative to `china_pol2` | Table A3 |
-| `output/tables/ext_mechanisms_index.csv` | Standardized index of the eight perceptions (equally and inverse-covariance weighted) | Table A3 |
-| `output/tables/ext_mechanisms_index_loo.csv` | The index re-estimated without each of the eight items in turn | Section 4.7 |
-| `output/tables/ext_balance_means.csv` | Covariate means and missing-outcome rates by video | Table A5 |
-| `output/tables/ext_balance_tests.csv` | Balance, country-by-video, omnibus, and missingness tests by video | Table A5, Section 4.3 |
-| `output/tables/ext_authors_video_type.csv` | The replication code's unreported video-type regression, as specified and with arms separated | Table A6 |
-| `output/figures/fig1_main_effects.{pdf,png}` | Covariate-adjusted treatment effects | Figure 1 |
-| `output/figures/fig2_competition_videos.{pdf,png}` | Video-level effects in the Competition arm | Figure 2 |
-| `output/figures/fig3_content_type.{pdf,png}` | Economic video vs. `pol1` in two designs | Figure 3 |
-| `output/figures/fig4_mechanisms.{pdf,png}` | Economic video vs. `china_pol1` on perceptions of China | Figure 4 |
+The complete [output catalog](docs/outputs.md) maps generated tables and figures to the paper. Each analysis script can also be run directly after `clean.py`.
 
 ## License
 

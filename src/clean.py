@@ -18,24 +18,18 @@ Output: data/processed/clean.parquet
         output/tables/sample_flow.csv
 """
 
-from pathlib import Path
-
 import numpy as np
 import pandas as pd
 import pyreadr
 
-ROOT = Path(__file__).resolve().parents[1]
+from analysis_utils import CSV_FLOAT_FORMAT, PROCESSED, ROOT, TABLES, check
+
 RAW = ROOT / "data" / "raw"
-PROCESSED = ROOT / "data" / "processed"
-TABLES = ROOT / "output" / "tables"
-# Ten significant digits: far more than the paper reports, but few enough that
-# floating-point noise across machines (~1e-14) does not change the files.
-CSV_FLOAT_FORMAT = "%.10g"
 
 # Control first so that it is the reference category, as in the R code.
 TREATMENT_LEVELS = ["Control", "China", "USA", "Competition"]
 
-# Figures from the paper / Table A3 used to validate the loaded data.
+# Figures from Mattingly et al. (text and Table A3) used to validate the loaded data.
 EXPECTED_GROUP_SIZES = {"Control": 1558, "China": 1622, "USA": 1565, "Competition": 1531}
 EXPECTED_N_OUTCOME = {"political_model": 5952, "econ_model": 5946}
 EXPECTED_N_COUNTRIES = 19
@@ -89,12 +83,6 @@ def sample_flow(df):
     flow = pd.Series(stage).value_counts(sort=False).rename_axis("stage").reset_index(name="n")
     total = pd.DataFrame({"stage": ["Total"], "n": [len(df)]})
     return pd.concat([flow, total], ignore_index=True)
-
-
-def check(condition, message):
-    """Raise an error with `message` if `condition` is false."""
-    if not condition:
-        raise ValueError(message)
 
 
 def validate(df):

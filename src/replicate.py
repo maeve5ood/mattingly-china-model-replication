@@ -12,21 +12,12 @@ Output: output/tables/primary_coefficients.csv  (all treatment coefficients)
         output/tables/share_prefer_china.csv     (raw shares preferring China, by arm)
 """
 
-from pathlib import Path
-
 import pandas as pd
-import statsmodels.formula.api as smf
 
-ROOT = Path(__file__).resolve().parents[1]
-PROCESSED = ROOT / "data" / "processed"
-TABLES = ROOT / "output" / "tables"
-# Ten significant digits: far more than the paper reports, but few enough that
-# floating-point noise across machines (~1e-14) does not change the files.
-CSV_FLOAT_FORMAT = "%.10g"
+from analysis_utils import COVARIATES, extract, fit, load_data, save_tables
 
 OUTCOMES = ["political_model", "econ_model", "world_leader"]
 TREATMENT = 'C(treatment, Treatment("Control"))'
-COVARIATES = "C(country) + gender + age + education + national_pride + leftright"
 
 # Readable names for statsmodels' coefficient labels.
 TERM_NAMES = {
@@ -36,7 +27,7 @@ TERM_NAMES = {
     f"{TREATMENT}[T.Competition]": "Competition",
 }
 
-# Table A3 of the paper: (estimate, standard error), rounded to 2 decimals.
+# Mattingly et al.'s Table A3: (estimate, standard error), rounded to 2 decimals.
 TABLE_A3 = {
     ("political_model", True): {"Constant": (3.32, 0.20), "China": (1.04, 0.05),
                                 "USA": (-0.43, 0.04), "Competition": (0.36, 0.05)},
@@ -57,51 +48,29 @@ TABLE_A3_N = {"political_model": 5952, "econ_model": 5946, "world_leader": 5943}
 TOLERANCE = 0.005 + 1e-9
 
 
-def load_data():
-    """Read the analysis sample produced by 01_clean.py."""
-    return pd.read_parquet(PROCESSED / "clean.parquet")
-
-
-def fit(df, outcome, adjusted):
-    """Fit OLS of `outcome` on treatment with HC2 robust standard errors.
+def fit_primary(df, outcome, adjusted):
+    """Fit `outcome` on treatment, with or without covariates.
 
     Rows with a missing outcome are dropped automatically, as in R's lm_robust.
     """
     rhs = f"{TREATMENT} + {COVARIATES}" if adjusted else TREATMENT
-    return smf.ols(f"{outcome} ~ {rhs}", data=df).fit(cov_type="HC2")
-
-
-def tidy(result, outcome, adjusted):
-    """Return the constant and treatment coefficients of one model as a data frame."""
-    ci = result.conf_int()
-    rows = []
-    for raw_name, term in TERM_NAMES.items():
-        rows.append({
-            "outcome": outcome,
-            "adjusted": adjusted,
-            "term": term,
-            "estimate": result.params[raw_name],
-            "std_error": result.bse[raw_name],
-            "p_value": result.pvalues[raw_name],
-            "ci_low": ci.loc[raw_name, 0],
-            "ci_high": ci.loc[raw_name, 1],
-            "n": int(result.nobs),
-        })
-    return pd.DataFrame(rows)
+    return fit(df, f"{outcome} ~ {rhs}")
 
 
 def estimate_all(df):
     """Fit every outcome with and without covariates and stack the results."""
-    tables = [
-        tidy(fit(df, outcome, adjusted), outcome, adjusted)
-        for outcome in OUTCOMES
-        for adjusted in (True, False)
-    ]
+    tables = []
+    for outcome in OUTCOMES:
+        for adjusted in (True, False):
+            table = extract(fit_primary(df, outcome, adjusted), TERM_NAMES)
+            table.insert(0, "outcome", outcome)
+            table.insert(1, "adjusted", adjusted)
+            tables.append(table)
     return pd.concat(tables, ignore_index=True)
 
 
 def compare_with_paper(coefs):
-    """Line up our estimates with Table A3 and flag any mismatch."""
+    """Line up our estimates with the published Table A3 and flag any mismatch."""
     rows = []
     for (outcome, adjusted), terms in TABLE_A3.items():
         for term, (paper_est, paper_se) in terms.items():
@@ -156,29 +125,25 @@ def main():
     """Estimate the primary models, check them against the paper, and save tables."""
     df = load_data()
     coefs = estimate_all(df)
-    check = compare_with_paper(coefs)
+    comparison = compare_with_paper(coefs)
     standardized = standardized_effects(df, coefs)
     shares = share_prefer_china(df)
-
-    TABLES.mkdir(parents=True, exist_ok=True)
-    outputs = {
+    save_tables({
         "primary_coefficients.csv": coefs,
-        "table_a3_check.csv": check,
+        "table_a3_check.csv": comparison,
         "standardized_effects.csv": standardized,
         "share_prefer_china.csv": shares,
-    }
-    for filename, table in outputs.items():
-        table.to_csv(TABLES / filename, index=False, float_format=CSV_FLOAT_FORMAT)
+    })
 
-    print(check.to_string(index=False))
+    print(comparison.to_string(index=False))
     print()
     print(standardized.round(3).to_string(index=False))
     print()
     print(shares.round(3).to_string(index=False))
 
-    if not check["match"].all():
+    if not comparison["match"].all():
         raise ValueError("Some estimates do not match Table A3; see table_a3_check.csv")
-    print(f"\nAll {len(check)} Table A3 coefficients match the paper.")
+    print(f"\nAll {len(comparison)} Table A3 coefficients match the paper.")
 
 
 if __name__ == "__main__":
