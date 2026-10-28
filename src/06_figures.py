@@ -1,8 +1,8 @@
 """Produce figures for the replication and extension.
 
 All figures are coefficient plots: a point estimate with its 95% confidence
-interval. They read only the CSV tables written by replicate.py and
-message_effects.py and mechanisms.py, so no model is re-estimated here.
+interval. They read only the CSV tables written by 02_replicate.py and
+03_message_effects.py and 04_mechanisms.py, so no model is re-estimated here.
 
 Input:  output/tables/primary_coefficients.csv
         output/tables/ext_competition_videos.csv

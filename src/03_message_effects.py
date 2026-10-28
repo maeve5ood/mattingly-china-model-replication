@@ -3,7 +3,7 @@
 Reproduces Sections 4.3, 4.5, and 4.6, plus their supporting checks.
 OLS uses the original adjustment set and HC2 standard errors. Each table's
 p-values are adjusted as one family unless its function documents otherwise.
-Run directly after clean.py, or through run_all.py.
+Run directly after 01_clean.py, or through run_all.py.
 """
 
 import numpy as np

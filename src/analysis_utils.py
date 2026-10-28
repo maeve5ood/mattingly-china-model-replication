@@ -15,7 +15,7 @@ COVARIATES = "C(country) + gender + age + education + national_pride + leftright
 
 
 def load_data():
-    """Read the analysis sample produced by clean.py."""
+    """Read the analysis sample produced by 01_clean.py."""
     return pd.read_parquet(PROCESSED / "clean.parquet")
 
 

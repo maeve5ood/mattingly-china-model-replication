@@ -1,9 +1,11 @@
 """Exploratory perception outcomes, summary indices, and sensitivity checks.
 
 Produces Section 4.7, Figure 4, and this paper's Table A3 (not Mattingly et
-al.'s Table A3, which replicate.py reproduces). Post-treatment perceptions
+al.'s Table A3, which 02_replicate.py reproduces). Post-treatment perceptions
 are outcomes here; these regressions do not identify causal mediation.
 """
+
+from importlib import import_module
 
 import numpy as np
 import pandas as pd
@@ -11,9 +13,9 @@ import pandas as pd
 from analysis_utils import (
     COVARIATES, adjust_pvalues, check, contrast, extract, fit, load_data, save_tables,
 )
-from message_effects import (
-    add_companion, competition_sample, content_contrasts, fit_video_model, video_terms,
-)
+
+# Module names that start with a digit need import_module.
+effects = import_module("03_message_effects")
 
 # Perceptions measured after treatment (1-7 agreement scale), asked about both
 # China and the US; `{c}` is "china" or "us". Labels abbreviate the item
@@ -53,7 +55,7 @@ def companion_mechanisms(df):
     control = df[df["treatment"] == "Control"]
     tables = []
     for arm, prefix in [("China", "china"), ("USA", "us")]:
-        arm_df = add_companion(df[df["treatment"] == arm], prefix)
+        arm_df = effects.add_companion(df[df["treatment"] == arm], prefix)
         rows = []
         for template, label in PERCEPTION_ITEMS.items():
             variable = perception_variable(template, prefix)
@@ -70,7 +72,7 @@ def companion_mechanisms(df):
 
 def mechanism_contrasts(df, models):
     """Economic content vs. `pol1` on each perception of China, in both designs."""
-    table = content_contrasts(df, models, list(MECHANISMS))
+    table = effects.content_contrasts(df, models, list(MECHANISMS))
     table = table[table["source"] == "CGTN"].drop(columns=["p_holm", "p_bh"])
     table.insert(1, "label", table["outcome"].map(MECHANISMS))
     return adjust_pvalues(table.reset_index(drop=True))
@@ -91,7 +93,7 @@ def mechanism_videos(models):
     """Each Chinese video's effect on perceptions of China relative to `china_pol2`."""
     tables = []
     for outcome, label in MECHANISMS.items():
-        rows = extract(models[outcome], video_terms("china"))
+        rows = extract(models[outcome], effects.video_terms("china"))
         rows.insert(0, "outcome", outcome)
         rows.insert(1, "label", label)
         tables.append(rows)
@@ -111,11 +113,11 @@ def mechanism_index(df, comp, items=None):
     correlation = control[items].dropna().corr().to_numpy()
     item_correlation = correlation[np.triu_indices(len(items), 1)].mean()
 
-    terms = video_terms("china")
+    terms = effects.video_terms("china")
     tables = []
     for column, label in [("index_equal", "Equally weighted"),
                           ("index_inverse_covariance", "Inverse-covariance weighted")]:
-        result = fit_video_model(data, column)
+        result = effects.fit_video_model(data, column)
         rows = extract(result, terms)
         others = contrast(result, {name: 1 / 3 for name in terms}, "average of other three")
         rows = pd.concat([rows, pd.DataFrame([others])], ignore_index=True)
@@ -159,8 +161,8 @@ def build_indices(control, sample, items):
 def main():
     """Reuse the perception video models across contrasts and video effects."""
     df = load_data()
-    comp = competition_sample(df)
-    models = {outcome: fit_video_model(comp, outcome) for outcome in MECHANISMS}
+    comp = effects.competition_sample(df)
+    models = {outcome: effects.fit_video_model(comp, outcome) for outcome in MECHANISMS}
     save_tables({
         "ext_companion_mechanisms.csv": companion_mechanisms(df),
         "ext_mechanisms_content.csv": mechanism_contrasts(df, models),

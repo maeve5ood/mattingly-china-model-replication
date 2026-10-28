@@ -4,6 +4,7 @@ No replication data or additional test dependencies are required.
 """
 import sys
 import unittest
+from importlib import import_module
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -13,9 +14,13 @@ import statsmodels.api as sm
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 from analysis_utils import contrast
-from diagnostics import validate_multinomial
-from mechanisms import build_indices
-from message_effects import add_companion, econ_vs_pol1_weights, video_terms
+
+# Pipeline scripts are numbered by step, so they are loaded with import_module.
+validate_multinomial = import_module("05_diagnostics").validate_multinomial
+build_indices = import_module("04_mechanisms").build_indices
+effects = import_module("03_message_effects")
+add_companion, econ_vs_pol1_weights, video_terms = (
+    effects.add_companion, effects.econ_vs_pol1_weights, effects.video_terms)
 
 
 class CompanionTests(unittest.TestCase):

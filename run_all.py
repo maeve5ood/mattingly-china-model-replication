@@ -7,12 +7,12 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
 STEPS = [
-    "src/clean.py",
-    "src/replicate.py",
-    "src/message_effects.py",
-    "src/mechanisms.py",
-    "src/diagnostics.py",
-    "src/figures.py",
+    "src/01_clean.py",
+    "src/02_replicate.py",
+    "src/03_message_effects.py",
+    "src/04_mechanisms.py",
+    "src/05_diagnostics.py",
+    "src/06_figures.py",
 ]
 
 

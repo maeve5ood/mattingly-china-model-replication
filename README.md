@@ -13,11 +13,11 @@ The original analysis was written in R. This project reproduces the main results
 
 For a short coding-sample review, start with:
 
-1. [`src/replicate.py`](src/replicate.py): translation of the authors' primary R models into Python, including a check against all 24 reported coefficients and standard errors.
-2. [`src/message_effects.py`](src/message_effects.py): this project's extension—recover the within-arm assignment structure, estimate individual-video effects, and compare content using explicit linear contrasts and bootstrap uncertainty.
-3. [`src/diagnostics.py`](src/diagnostics.py): supporting balance and missingness checks, with convergence checks for the multinomial models.
+1. [`src/02_replicate.py`](src/02_replicate.py): translation of the authors' primary R models into Python, including a check against all 24 reported coefficients and standard errors.
+2. [`src/03_message_effects.py`](src/03_message_effects.py): this project's extension—recover the within-arm assignment structure, estimate individual-video effects, and compare content using explicit linear contrasts and bootstrap uncertainty.
+3. [`src/05_diagnostics.py`](src/05_diagnostics.py): supporting balance and missingness checks, with convergence checks for the multinomial models.
 
-The original experiment, cleaned data, primary model specification, and the pooled video-type regression come from Mattingly et al. The message-level comparisons, companion and position analyses, dispersion comparisons, and perception-index sensitivity checks are additions in this project. [`src/mechanisms.py`](src/mechanisms.py) contains the exploratory perception analyses; these estimate effects on perceptions, not causal mediation.
+The original experiment, cleaned data, primary model specification, and the pooled video-type regression come from Mattingly et al. The message-level comparisons, companion and position analyses, dispersion comparisons, and perception-index sensitivity checks are additions in this project. [`src/04_mechanisms.py`](src/04_mechanisms.py) contains the exploratory perception analyses; these estimate effects on perceptions, not causal mediation.
 
 ## Main findings
 
@@ -83,23 +83,23 @@ cd paper && latexmk -pdf main.tex
 ## Repository structure
 
 ```
-├── run_all.py              # analysis pipeline; --check-paper adds manuscript checks
+├── run_all.py                 # analysis pipeline; --check-paper adds manuscript checks
 ├── src/
-│   ├── clean.py            # load, document, and validate the analysis sample
-│   ├── replicate.py        # reproduce the authors' primary models
-│   ├── message_effects.py  # assignment, video effects, and content contrasts
-│   ├── mechanisms.py       # exploratory perceptions and summary indices
-│   ├── diagnostics.py      # balance, missingness, and original-code specification
-│   ├── analysis_utils.py   # shared model settings and table helpers
-│   └── figures.py          # draw figures from result tables
-├── checks/check_paper.py   # optional manuscript consistency checks
-├── tests/test_analysis.py  # focused synthetic checks
-├── paper/                  # LaTeX source and compiled paper
-├── data/                   # not tracked; see Data above
-└── output/                 # tables and figures
+│   ├── 01_clean.py            # load, document, and validate the analysis sample
+│   ├── 02_replicate.py        # reproduce the authors' primary models
+│   ├── 03_message_effects.py  # assignment, video effects, and content contrasts
+│   ├── 04_mechanisms.py       # exploratory perceptions and summary indices
+│   ├── 05_diagnostics.py      # balance, missingness, and original-code specification
+│   ├── 06_figures.py          # draw figures from result tables
+│   └── analysis_utils.py      # shared model settings and table helpers
+├── checks/check_paper.py      # optional manuscript consistency checks
+├── tests/test_analysis.py     # focused synthetic checks
+├── paper/                     # LaTeX source and compiled paper
+├── data/                      # not tracked; see Data above
+└── output/                    # tables and figures
 ```
 
-The complete [output catalog](docs/outputs.md) maps generated tables and figures to the paper. Each analysis script can also be run directly after `clean.py`.
+The complete [output catalog](docs/outputs.md) maps generated tables and figures to the paper. Each analysis script can also be run directly after `01_clean.py`.
 
 ## License
 
