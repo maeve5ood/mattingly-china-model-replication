@@ -1,0 +1,9 @@
+arm,outcome,term,estimate,std_error,p_value,ci_low,ci_high,n
+China,political_model,"Economic companion, pol2 second for all",-0.0426738824,0.09462350707,0.6519995978,-0.2281325483,0.1427847835,1174
+China,political_model,pol2 first vs. second (political pairs),-0.117465504,0.1142257072,0.3037790525,-0.3413437762,0.1064127682,732
+China,econ_model,"Economic companion, pol2 second for all",0.2374398668,0.09544505202,0.01285675526,0.05037100229,0.4245087312,1173
+China,econ_model,pol2 first vs. second (political pairs),-0.02808458759,0.1145073458,0.8062516327,-0.2525148613,0.1963456861,732
+USA,political_model,"Economic companion, pol2 second for all",0.07567348846,0.06582899018,0.2503306841,-0.05334896143,0.2046959384,1120
+USA,political_model,pol2 first vs. second (political pairs),-0.01971471734,0.07379536008,0.7893506784,-0.1643509653,0.1249215306,742
+USA,econ_model,"Economic companion, pol2 second for all",0.07290716444,0.07919797648,0.357275741,-0.08231801711,0.228132346,1119
+USA,econ_model,pol2 first vs. second (political pairs),0.09669865609,0.09154300808,0.2908223121,-0.08272234279,0.276119655,741

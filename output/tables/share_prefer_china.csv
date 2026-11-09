@@ -1,0 +1,9 @@
+outcome,treatment,share_prefer_china,n
+political_model,Control,0.163168585,1477
+political_model,China,0.5428945645,1527
+political_model,USA,0.07588985897,1489
+political_model,Competition,0.3193968472,1459
+econ_model,Control,0.3006093433,1477
+econ_model,China,0.5884665793,1526
+econ_model,USA,0.1627437794,1487
+econ_model,Competition,0.407967033,1456
