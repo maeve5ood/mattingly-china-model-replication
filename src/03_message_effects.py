@@ -5,7 +5,7 @@ import pandas as pd
 from scipy.stats import chi2_contingency, norm
 
 from analysis_utils import (
-    COVARIATES, OUTCOMES, adjust_pvalues, check, contrast, extract, fit,
+    COVARIATES, OUTCOMES, SINGLE_ARMS, adjust_pvalues, check, contrast, extract, fit,
     load_data, save_tables,
 )
 
@@ -18,7 +18,7 @@ MDE_MULTIPLIER = norm.ppf(0.975) + norm.ppf(0.80)
 def assignment_table(df):
     # video2 = pol2 unless video1 is pol2, then pol1 (cf. fn. 9)
     tables = []
-    for arm, prefix in [("China", "china"), ("USA", "us")]:
+    for arm, prefix in SINGLE_ARMS.items():
         arm_df = df[df["treatment"] == arm]
         expected = arm_df["video1"].map(lambda v: f"{prefix}_pol1" if v == f"{prefix}_pol2"
                                         else f"{prefix}_pol2")
@@ -33,13 +33,13 @@ def assignment_table(df):
 
 def add_companion(arm_df, prefix):
     # companion = the other video shown with pol2
+    check(prefix in SINGLE_ARMS.values(), f"Unknown video prefix: {prefix}")
     pol2 = f"{prefix}_pol2"
-    check(prefix in {"china", "us"}, f"Unknown video prefix: {prefix}")
     valid = {f"{prefix}_{v}" for v in ("econ1", "econ2", "pol1", "pol2")}
     check(not arm_df.empty, f"Empty {prefix} arm")
     check(arm_df[["video1", "video2"]].isin(valid).all().all(),
           f"Invalid or missing video in the {prefix} arm")
-    saw_pol2 = (arm_df["video1"] == pol2).astype(int) + (arm_df["video2"] == pol2).astype(int)
+    saw_pol2 = (arm_df[["video1", "video2"]] == pol2).sum(axis=1)
     check((saw_pol2 == 1).all(), f"Expected exactly one {pol2} per respondent")
 
     arm_df = arm_df.copy()
@@ -175,20 +175,16 @@ def dispersion_comparison(models, draws=20000, seed=354):
 def type_effects(comp):
     # interaction is exploratory only (~380 per cell)
     main_terms = {"china_econ": "China economic video", "us_econ": "US economic video"}
-    tables = []
+    main, interaction = [], []
     for outcome in OUTCOMES:
         additive = fit(comp, f"{outcome} ~ china_econ + us_econ + {COVARIATES}")
         interacted = fit(comp, f"{outcome} ~ china_econ * us_econ + {COVARIATES}")
-        rows = pd.concat([
-            extract(additive, main_terms).assign(model="additive"),
-            extract(interacted, {"china_econ:us_econ": "China econ x US econ"}).assign(model="interaction"),
-        ])
-        rows.insert(0, "outcome", outcome)
-        tables.append(rows)
-    table = pd.concat(tables, ignore_index=True)
-
-    main = adjust_pvalues(table[table["model"] == "additive"])
-    return pd.concat([main, table[table["model"] == "interaction"]], ignore_index=True)
+        main.append(extract(additive, main_terms).assign(outcome=outcome, model="additive"))
+        interaction.append(extract(interacted, {"china_econ:us_econ": "China econ x US econ"})
+                           .assign(outcome=outcome, model="interaction"))
+    main = adjust_pvalues(pd.concat(main, ignore_index=True))
+    table = pd.concat([main, *interaction], ignore_index=True)
+    return table[["outcome"] + [c for c in table.columns if c != "outcome"]]
 
 
 def econ_vs_pol1_weights(prefix):
@@ -196,12 +192,14 @@ def econ_vs_pol1_weights(prefix):
             video_term(prefix, "pol1"): -1}
 
 
-def content_contrasts(df, models, outcomes):
-    # econ vs pol1: companion contrast in single-country arms, avg(econ) - pol1 in Competition
+def content_contrasts(df, models, outcomes, arms):
+    # Single-country arms pool econ1/econ2. Competition weights them equally.
+    sources = {"China": "CGTN", "USA": "State Department"}
     rows = []
     for outcome in outcomes:
         comp_result = models[outcome]
-        for arm, prefix, source in [("China", "china", "CGTN"), ("USA", "us", "State Department")]:
+        for arm in arms:
+            prefix = SINGLE_ARMS[arm]
             arm_df = add_companion(df[df["treatment"] == arm], prefix)
             result = fit(arm_df, f"{outcome} ~ companion_econ + {COVARIATES}")
             single = extract(result, {"companion_econ": "Economic vs. pol1"}).iloc[0].to_dict()
@@ -212,17 +210,17 @@ def content_contrasts(df, models, outcomes):
                                 "mde": MDE_MULTIPLIER * competition["std_error"]})
 
             for row in (single, competition):
-                row.update({"outcome": outcome, "source": source})
+                row.update({"outcome": outcome, "source": sources[arm]})
                 rows.append(row)
     columns = ["outcome", "source", "design", "term", "estimate", "std_error", "p_value",
                "ci_low", "ci_high", "mde", "n"]
-    return adjust_pvalues(pd.DataFrame(rows)[columns])
+    return pd.DataFrame(rows)[columns]
 
 
 def companion_position(df):
     # Table A4: econ companions always played before pol2, so check order
     tables = []
-    for arm, prefix in [("China", "china"), ("USA", "us")]:
+    for arm, prefix in SINGLE_ARMS.items():
         arm_df = add_companion(df[df["treatment"] == arm], prefix)
         pol2 = f"{prefix}_pol2"
         same_position = arm_df[arm_df["video2"] == pol2]
@@ -254,7 +252,7 @@ def main():
         "ext_competition_range.csv": range_uncertainty(models),
         "ext_competition_dispersion.csv": dispersion_comparison(models),
         "ext_competition_types.csv": type_effects(comp),
-        "ext_content_type.csv": content_contrasts(df, models, OUTCOMES),
+        "ext_content_type.csv": adjust_pvalues(content_contrasts(df, models, OUTCOMES, SINGLE_ARMS)),
         "ext_companion_position.csv": companion_position(df),
     })
 

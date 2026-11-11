@@ -1,6 +1,5 @@
-"""Run steps 1-6. --check-paper also checks the numbers in paper/main.tex."""
+"""Run steps 1-7: clean, estimate, draw figures, write paper/numbers.tex."""
 
-import argparse
 import subprocess
 import sys
 from pathlib import Path
@@ -13,16 +12,12 @@ STEPS = [
     "src/04_mechanisms.py",
     "src/05_diagnostics.py",
     "src/06_figures.py",
+    "src/07_paper_numbers.py",
 ]
 
 
 def main():
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--check-paper", action="store_true",
-                        help="also check reported numbers against paper/main.tex")
-    args = parser.parse_args()
-    steps = STEPS + (["checks/check_paper.py"] if args.check_paper else [])
-    for step in steps:
+    for step in STEPS:
         print(f"=== Running {step} ===", flush=True)
         subprocess.run([sys.executable, str(ROOT / step)], cwd=ROOT, check=True)
     print("=== All steps finished ===")

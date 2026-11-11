@@ -11,20 +11,16 @@ import statsmodels.api as sm
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 from analysis_utils import contrast
 
-validate_multinomial = import_module("05_diagnostics").validate_multinomial
-build_indices = import_module("04_mechanisms").build_indices
+diagnostics = import_module("05_diagnostics")
+mechanisms = import_module("04_mechanisms")
 effects = import_module("03_message_effects")
-add_companion, econ_vs_pol1_weights, video_terms = (
-    effects.add_companion, effects.econ_vs_pol1_weights, effects.video_terms)
-dispersion_comparison, range_uncertainty = (
-    effects.dispersion_comparison, effects.range_uncertainty)
 
 
 class CompanionTests(unittest.TestCase):
     def test_both_slots_and_video_types(self):
         data = pd.DataFrame({"video1": ["china_pol2", "china_econ1", "china_econ2"],
                              "video2": ["china_pol1", "china_pol2", "china_pol2"]})
-        result = add_companion(data, "china")
+        result = effects.add_companion(data, "china")
         self.assertEqual(result.companion.tolist(), ["china_pol1", "china_econ1", "china_econ2"])
         self.assertEqual(result.companion_econ.tolist(), [0, 1, 1])
         self.assertNotIn("companion", data)
@@ -33,7 +29,12 @@ class CompanionTests(unittest.TestCase):
         for pair in [("china_pol1", "china_econ1"), ("china_pol2", "china_pol2"),
                      ("china_pol2", None), ("china_pol2", "us_econ1")]:
             with self.subTest(pair=pair), self.assertRaises(ValueError):
-                add_companion(pd.DataFrame([pair], columns=["video1", "video2"]), "china")
+                effects.add_companion(pd.DataFrame([pair], columns=["video1", "video2"]), "china")
+
+    def test_unknown_prefix_fails(self):
+        data = pd.DataFrame({"video1": ["other_pol2"], "video2": ["other_pol1"]})
+        with self.assertRaisesRegex(ValueError, "Unknown video prefix"):
+            effects.add_companion(data, "other")
 
 
 class ContrastTests(unittest.TestCase):
@@ -42,7 +43,7 @@ class ContrastTests(unittest.TestCase):
             factor = f'C({column}, Treatment("{prefix}_pol2"))'
             expected = {f"{factor}[T.{prefix}_econ1]": 0.5, f"{factor}[T.{prefix}_econ2]": 0.5,
                         f"{factor}[T.{prefix}_pol1]": -1}
-            self.assertEqual(econ_vs_pol1_weights(prefix), expected)
+            self.assertEqual(effects.econ_vs_pol1_weights(prefix), expected)
 
     def test_estimate_and_covariance_against_matrix_calculation(self):
         rng = np.random.default_rng(7)
@@ -55,7 +56,7 @@ class ContrastTests(unittest.TestCase):
 
 
 def video_models(china, us, variance):
-    names = list(video_terms("china")) + list(video_terms("us"))
+    names = list(effects.video_terms("china")) + list(effects.video_terms("us"))
     params = pd.Series(china + us, index=names)
     covariance = pd.DataFrame(variance * np.eye(6), index=names, columns=names)
     result = SimpleNamespace(params=params, cov_params=lambda: covariance)
@@ -67,10 +68,10 @@ class BootstrapTests(unittest.TestCase):
         # china: .6 .2 -.4 0 -> range 1; us: .1 .1 .1 0 -> range .1
         china, us = [0.6, 0.2, -0.4], [0.1, 0.1, 0.1]
         models = video_models(china, us, variance=1e-12)
-        ranges = range_uncertainty(models, draws=500)
+        ranges = effects.range_uncertainty(models, draws=500)
         np.testing.assert_allclose(ranges[["observed_range", "ci_low", "ci_high"]], 1.0,
                                    atol=1e-4)
-        dispersion = dispersion_comparison(models, draws=500).set_index(["outcome", "measure"])
+        dispersion = effects.dispersion_comparison(models, draws=500).set_index(["outcome", "measure"])
         sd = np.std(china + [0], ddof=1) - np.std(us + [0], ddof=1)
         for measure, expected in (("range", 0.9), ("sd", sd)):
             row = dispersion.loc[("political_model", measure)]
@@ -79,7 +80,7 @@ class BootstrapTests(unittest.TestCase):
 
     def test_range_of_equal_effects_is_biased_upward(self):
         models = video_models([0.] * 3, [0.] * 3, variance=0.01)
-        row = range_uncertainty(models, draws=2000).iloc[0]
+        row = effects.range_uncertainty(models, draws=2000).iloc[0]
         self.assertEqual(row["observed_range"], 0)
         self.assertGreater(row["bias"], 0.1)
         self.assertAlmostEqual(row["bias_corrected_range"], -row["bias"])
@@ -91,7 +92,7 @@ class IndexTests(unittest.TestCase):
 
     def test_control_standardization_and_complete_cases(self):
         sample = pd.DataFrame({"a": [1., 2., np.nan], "b": [1., 0., 1.]}, index=[8, 4, 9])
-        result = build_indices(self.control, sample, ["a", "b"])
+        result = mechanisms.build_indices(self.control, sample, ["a", "b"])
         expected = 1 / np.sqrt(4/3)
         np.testing.assert_allclose(result.loc[[8, 4], "index_equal"], expected)
         np.testing.assert_allclose(result.loc[[8, 4], "index_inverse_covariance"], expected)
@@ -105,7 +106,7 @@ class IndexTests(unittest.TestCase):
         e = np.array([-1., 1., -1., 1., -1., 1., -1., 1.])
         control = pd.DataFrame({"a": a, "b": b, "c": a+b+e})
         sample = pd.DataFrame({"a": [1.], "b": [0.], "c": [0.]})
-        result = build_indices(control, sample, ["a", "b", "c"])
+        result = mechanisms.build_indices(control, sample, ["a", "b", "c"])
         r = 1 / np.sqrt(3)
         expected = (1-r) / (3-4*r) / np.sqrt(8/7)
         self.assertAlmostEqual(result.loc[0, "index_inverse_covariance"], expected)
@@ -114,9 +115,9 @@ class IndexTests(unittest.TestCase):
         for control in (self.control.assign(a=1.), self.control.assign(b=self.control.a),
                         self.control.iloc[:2]):
             with self.subTest(control=control), self.assertRaises(ValueError):
-                build_indices(control, self.control, ["a", "b"])
+                mechanisms.build_indices(control, self.control, ["a", "b"])
         with self.assertRaisesRegex(ValueError, "No complete"):
-            build_indices(self.control, pd.DataFrame({"a": [np.nan], "b": [1.]}), ["a", "b"])
+            mechanisms.build_indices(self.control, pd.DataFrame({"a": [np.nan], "b": [1.]}), ["a", "b"])
 
 
 class ConvergenceTests(unittest.TestCase):
@@ -125,7 +126,7 @@ class ConvergenceTests(unittest.TestCase):
                                        (True, -10., [np.inf])]:
             result = SimpleNamespace(mle_retvals={"converged": converged}, llf=llf, params=params)
             with self.subTest(converged=converged, llf=llf), self.assertRaises(ValueError):
-                validate_multinomial(result, "test")
+                diagnostics.validate_multinomial(result, "test")
 
 
 if __name__ == "__main__":

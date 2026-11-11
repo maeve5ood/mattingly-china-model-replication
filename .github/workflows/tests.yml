@@ -12,5 +12,17 @@ jobs:
           python-version: "3.12"
           cache: pip
       - run: pip install -r requirements.txt
-      # Synthetic tests only: the survey data are not in the repository.
-      - run: python -m unittest discover -s tests -v
+      - name: Run synthetic tests
+        run: python -m unittest discover -s tests -v
+      - name: Check generated paper values
+        run: |
+          git ls-files --error-unmatch -- paper/numbers.tex
+          python src/07_paper_numbers.py
+          git diff --exit-code -- paper/numbers.tex
+      - name: Install LaTeX
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y latexmk lmodern texlive-latex-extra texlive-fonts-recommended
+      - name: Compile the paper
+        working-directory: paper
+        run: latexmk -pdf -interaction=nonstopmode -halt-on-error main.tex

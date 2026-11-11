@@ -5,14 +5,12 @@ import numpy as np
 import pandas as pd
 import pyreadr
 
-from analysis_utils import CSV_FLOAT_FORMAT, PROCESSED, ROOT, TABLES, check
+from analysis_utils import PROCESSED, ROOT, check, save_tables
 
 RAW = ROOT / "data" / "raw"
 
-# Control = reference
 TREATMENT_LEVELS = ["Control", "China", "USA", "Competition"]
 
-# from the paper
 EXPECTED_GROUP_SIZES = {"Control": 1558, "China": 1622, "USA": 1565, "Competition": 1531}
 EXPECTED_N_OUTCOME = {"political_model": 5952, "econ_model": 5946}
 EXPECTED_N_COUNTRIES = 19
@@ -83,8 +81,7 @@ def main():
 
     flow = sample_flow(raw)
     print(flow.to_string(index=False))
-    TABLES.mkdir(parents=True, exist_ok=True)
-    flow.to_csv(TABLES / "sample_flow.csv", index=False, float_format=CSV_FLOAT_FORMAT)
+    save_tables({"sample_flow.csv": flow})
 
     df = prepare(raw)
     validate(df)

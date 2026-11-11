@@ -2,9 +2,9 @@
 
 import pandas as pd
 
-from analysis_utils import COVARIATES, extract, fit, load_data, save_tables
+from analysis_utils import COVARIATES, OUTCOMES, extract, fit, load_data, save_tables
 
-OUTCOMES = ["political_model", "econ_model", "world_leader"]
+TABLE_A3_OUTCOMES = OUTCOMES + ["world_leader"]
 TREATMENT = 'C(treatment, Treatment("Control"))'
 
 TERM_NAMES = {
@@ -41,7 +41,7 @@ def fit_primary(df, outcome, adjusted):
 
 def estimate_all(df):
     tables = []
-    for outcome in OUTCOMES:
+    for outcome in TABLE_A3_OUTCOMES:
         for adjusted in (True, False):
             table = extract(fit_primary(df, outcome, adjusted), TERM_NAMES)
             table.insert(0, "outcome", outcome)
@@ -85,12 +85,12 @@ def standardized_effects(df, coefs):
 def share_prefer_china(df):
     # 4-6 = prefer China
     rows = []
-    for outcome in ["political_model", "econ_model"]:
+    for outcome in OUTCOMES:
         answered = df[df[outcome].notna()]
-        shares = (answered[outcome] >= 4).groupby(answered["treatment"], observed=True).mean()
-        for arm, share in shares.items():
-            rows.append({"outcome": outcome, "treatment": arm, "share_prefer_china": share,
-                         "n": int((answered["treatment"] == arm).sum())})
+        prefer_china = answered[outcome] >= 4
+        shares = prefer_china.groupby(answered["treatment"], observed=True).agg(["mean", "size"])
+        for arm, share, n in shares.itertuples():
+            rows.append({"outcome": outcome, "treatment": arm, "share_prefer_china": share, "n": n})
     return pd.DataFrame(rows)
 
 
@@ -107,13 +107,9 @@ def main():
         "share_prefer_china.csv": shares,
     })
 
-    print(comparison.to_string(index=False))
-    print()
-    print(standardized.round(3).to_string(index=False))
-    print()
-    print(shares.round(3).to_string(index=False))
-
-    if not comparison["match"].all():
+    mismatches = comparison.loc[~comparison["match"]]
+    if not mismatches.empty:
+        print(mismatches.to_string(index=False))
         raise ValueError("Some estimates do not match Table A3; see table_a3_check.csv")
     print(f"\nAll {len(comparison)} Table A3 coefficients match the paper.")
 

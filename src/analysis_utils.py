@@ -10,6 +10,7 @@ TABLES = ROOT / "output" / "tables"
 CSV_FLOAT_FORMAT = "%.10g"
 OUTCOMES = ["political_model", "econ_model"]
 COVARIATES = "C(country) + gender + age + education + national_pride + leftright"
+SINGLE_ARMS = {"China": "china", "USA": "us"}
 
 
 def load_data():

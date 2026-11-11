@@ -100,7 +100,7 @@ def fig_competition_videos():
 
     fig, axes = plt.subplots(1, 2, figsize=(7, 2.6), sharex=True, sharey=True)
     for ax, (title, rows) in zip(axes, panels):
-        coef_plot(ax, table[table["row"].isin(rows)], rows, xlabel="")
+        coef_plot(ax, table, rows, xlabel="")
         ax.set_title(title, fontsize=9, color=TEXT, loc="left")
     axes[1].tick_params(axis="y", labelleft=False)
     fig.supxlabel("Effect on preference for China (1–6 scale), vs. the country's pol2 video",

@@ -6,7 +6,8 @@ import numpy as np
 import pandas as pd
 
 from analysis_utils import (
-    COVARIATES, adjust_pvalues, check, contrast, extract, fit, load_data, save_tables,
+    COVARIATES, SINGLE_ARMS, adjust_pvalues, check, contrast, extract, fit, load_data,
+    save_tables,
 )
 
 effects = import_module("03_message_effects")
@@ -38,7 +39,7 @@ MECHANISMS = {perception_variable(template, "china"): label
 def companion_mechanisms(df):
     control = df[df["treatment"] == "Control"]
     tables = []
-    for arm, prefix in [("China", "china"), ("USA", "us")]:
+    for arm, prefix in SINGLE_ARMS.items():
         arm_df = effects.add_companion(df[df["treatment"] == arm], prefix)
         rows = []
         for template, label in PERCEPTION_ITEMS.items():
@@ -55,10 +56,9 @@ def companion_mechanisms(df):
 
 
 def mechanism_contrasts(df, models):
-    table = effects.content_contrasts(df, models, list(MECHANISMS))
-    table = table[table["source"] == "CGTN"].drop(columns=["p_holm", "p_bh"])
+    table = effects.content_contrasts(df, models, MECHANISMS, ("China",))
     table.insert(1, "label", table["outcome"].map(MECHANISMS))
-    return adjust_pvalues(table.reset_index(drop=True))
+    return adjust_pvalues(table)
 
 
 def mechanism_baseline(df):
@@ -79,6 +79,23 @@ def mechanism_videos(models):
         rows.insert(1, "label", label)
         tables.append(rows)
     return adjust_pvalues(pd.concat(tables, ignore_index=True))
+
+
+def build_indices(control, sample, items):
+    center, scale = control[items].mean(), control[items].std()
+    check((scale > 0).all(), "Index items must vary in the control group")
+    covariance = ((control[items] - center) / scale).dropna().cov().to_numpy()
+    check(np.linalg.cond(covariance) < 1e12, "Index covariance matrix is singular")
+    weights = np.linalg.solve(covariance, np.ones(len(items)))
+    z = (sample[items] - center) / scale
+    complete = z.notna().all(axis=1)
+    check(complete.any(), "No complete respondents for the index")
+    data = sample.copy()
+    data["index_equal"] = z.mean(axis=1).where(complete)
+    data["index_inverse_covariance"] = pd.Series(
+        z.to_numpy() @ weights / weights.sum(), index=data.index,
+    ).where(complete)
+    return data
 
 
 def mechanism_index(df, comp, items=None):
@@ -113,23 +130,6 @@ def mechanism_index_leave_one_out(df, comp):
         table.insert(0, "dropped_item", MECHANISMS[dropped])
         tables.append(table.drop(columns=["mean_item_correlation"]))
     return pd.concat(tables, ignore_index=True)
-
-
-def build_indices(control, sample, items):
-    center, scale = control[items].mean(), control[items].std()
-    check((scale > 0).all(), "Index items must vary in the control group")
-    covariance = ((control[items] - center) / scale).dropna().cov().to_numpy()
-    check(np.linalg.cond(covariance) < 1e12, "Index covariance matrix is singular")
-    weights = np.linalg.solve(covariance, np.ones(len(items)))
-    z = (sample[items] - center) / scale
-    complete = z.notna().all(axis=1)
-    check(complete.any(), "No complete respondents for the index")
-    data = sample.copy()
-    data["index_equal"] = z.mean(axis=1).where(complete)
-    data["index_inverse_covariance"] = pd.Series(
-        z.to_numpy() @ weights / weights.sum(), index=data.index,
-    ).where(complete)
-    return data
 
 
 def main():

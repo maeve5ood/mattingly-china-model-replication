@@ -9,39 +9,30 @@ A replication and extension of Mattingly et al. (2025)
 
 > Mattingly, Daniel C., Trevor Incerti, Changwook Ju, Colin Moreshead, Seiki Tanaka, and Hikaru Yamagishi. 2025. "Chinese State Media Persuades a Global Audience That the 'China Model' Is Superior: Evidence from a 19-Country Experiment." *American Journal of Political Science* 69(3): 1029–46. https://doi.org/10.1111/ajps.12887
 
-The original analysis was written in R. This project reproduces the main results in Python and extends them by *unbundling the treatments*: within each treatment arm, the specific videos a respondent saw were also randomly assigned, which allows causal comparisons of individual messages that the published paper does not report.
+The experiment and the cleaned data are Mattingly et al.'s; their analysis is in R. I port their primary models to Python and match the 24 coefficients and standard errors in their Table A3 to the reported precision, along with the sample sizes. The extension uses something the published paper leaves aside: within each treatment arm, the specific videos a respondent saw were also randomized. I recover the rule behind that assignment from the data and use it to compare individual messages.
 
-## Contribution
+## Findings
 
-The experiment, the cleaned data, and the primary model specification are Mattingly et al.'s. This project translates their primary R models into Python and verifies them against the published table. It then recovers, from the data, the rule by which the specific videos were assigned within each arm, and uses that design for new comparisons of individual messages: video-level effects, economic versus political content in two independent designs, and bootstrap uncertainty for how much the videos differ.
-
-## Suggested code review path
-
-For a short coding-sample review, read two files:
-
-1. [`src/02_replicate.py`](src/02_replicate.py): the authors' primary models in Python, with `compare_with_paper` checking all 24 reported coefficients, standard errors, and sample sizes.
-2. [`src/03_message_effects.py`](src/03_message_effects.py): the extension. Key functions are `assignment_table` and `add_companion` (recover the within-arm design), `content_contrasts` (linear contrasts across two designs), and `range_uncertainty` and `dispersion_comparison` (parametric bootstrap).
-
-Shared helpers are in [`src/analysis_utils.py`](src/analysis_utils.py). For more depth, [`src/05_diagnostics.py`](src/05_diagnostics.py) holds balance and missingness checks, and [`src/04_mechanisms.py`](src/04_mechanisms.py) the exploratory perception analyses; these estimate effects on perceptions, not causal mediation. The paper is background reading, not required for the code review.
-
-## Main findings
-
-- **Replication.** All 24 coefficients, standard errors, and sample sizes in the original primary results table (Mattingly et al.'s Table A3) match the published values at two decimals.
-- **Individual messages differ.** Among respondents who saw a single CGTN video, the most and least persuasive of the four videos differ by 0.60 points on preference for China's political model and 0.97 points on its economic model (six-point scales), more than the overall effects of that arm (0.36 and 0.28).
-- **Economic content compares well.** In two independent designs, economic CGTN videos are not detectably less persuasive than the stronger political video about China's political model, and they are more persuasive about its economic model (by 0.26 and 0.30 points).
-- **The design as implemented.** Every respondent in the China arm saw the same political video, `china_pol2`, which was the least persuasive of the four CGTN videos in the Competition arm.
+Among respondents who saw a single CGTN video, the most and least persuasive of the four differ by 0.60 points on preference for China's political model and 0.97 on its economic model (six-point scales), more than the Competition arm's overall effects (0.36 and 0.28). Compared with `china_pol1`, the economic videos increase preference for China's economic model by 0.26 and 0.30 points in two independent designs. The corresponding differences on the political outcome are statistically inconclusive. Every respondent in the China arm saw the same political video, `china_pol2`, which was the weakest of the four in the Competition arm.
 
 ![Effect of each video relative to its country's pol2 video in the Competition arm](output/figures/fig2_competition_videos.png)
 
 *Figure 2 of the paper: effect of each video relative to its country's `pol2` video, among respondents who saw one Chinese and one US video. Lines are pointwise 95% confidence intervals.*
 
+## Where to start reading the code
+
+1. [`src/02_replicate.py`](src/02_replicate.py): the authors' primary models, with `compare_with_paper` checking every cell of Table A3.
+2. [`src/03_message_effects.py`](src/03_message_effects.py): the extension. `assignment_table` and `add_companion` recover the within-arm design, `content_contrasts` compares content across the two designs, and `range_uncertainty` and `dispersion_comparison` are the parametric bootstraps.
+
+Shared helpers are in [`src/analysis_utils.py`](src/analysis_utils.py). [`src/05_diagnostics.py`](src/05_diagnostics.py) has the balance and missingness checks, and [`src/04_mechanisms.py`](src/04_mechanisms.py) the exploratory perception results (effects on perceptions, not mediation).
+
 ## Data
 
-The data are not included in this repository. Download the authors' replication package from Harvard Dataverse (https://doi.org/10.7910/DVN/CQ4FZR) and place `clean.RData` from its `Data/` folder at `data/raw/clean.RData`. This is the authors' cleaned analysis file and the only data file the code uses (see Section 3.1 of the paper for why the analysis starts from it rather than the raw survey exports).
+The data are not in this repository. Download the authors' replication package from Harvard Dataverse (https://doi.org/10.7910/DVN/CQ4FZR) and put `clean.RData` from its `Data/` folder at `data/raw/clean.RData`. It is the authors' cleaned analysis file and the only data file the code reads; Section 3.1 of the paper explains why the analysis starts there rather than from the raw survey exports.
 
-## Environment
+## Running
 
-Python 3.12.
+Python 3.12:
 
 ```bash
 python3.12 -m venv .venv
@@ -49,37 +40,21 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-## Running
+Then:
 
 ```bash
 python run_all.py
 ```
 
-The pipeline writes the result tables and figures. Runtime depends on the machine and whether the plotting font cache already exists.
+The pipeline writes tables to `output/tables/` and figures to `output/figures/`. It also generates `paper/numbers.tex` from the result tables. The manuscript uses `\val{...}` to insert estimates and table rows. CI regenerates this file from the committed tables and compiles the paper.
 
-To also check the manuscript's reported numbers:
-
-```bash
-python run_all.py --check-paper
-```
-
-Or check an existing set of outputs without re-estimating (this still reads arm sizes from `data/processed/clean.parquet`, so run `python src/01_clean.py` first):
-
-```bash
-python checks/check_paper.py
-```
-
-This auxiliary check rebuilds 177 passages and claims from the outputs and checks them against `paper/main.tex`. It detects inconsistencies between results and manuscript text; it does not independently validate statistical methods. Because some checks match full passages, wording changes may require updating the checker.
-
-Run the focused synthetic tests (no survey data or extra test packages needed):
+The unit tests use synthetic data:
 
 ```bash
 python -m unittest discover -s tests -v
 ```
 
-These cover companion identification, contrast weights, linear-contrast estimates and standard errors, the range and dispersion bootstraps, index standardization and complete cases, degenerate index inputs, and rejection of failed multinomial fits. They run on GitHub Actions at every push.
-
-To rebuild the paper after running the pipeline (requires a LaTeX distribution):
+To rebuild the paper (needs LaTeX):
 
 ```bash
 cd paper && latexmk -pdf main.tex
@@ -88,24 +63,24 @@ cd paper && latexmk -pdf main.tex
 ## Repository structure
 
 ```
-├── run_all.py                 # analysis pipeline; --check-paper adds manuscript checks
+├── run_all.py                 # runs steps 1-7
 ├── src/
-│   ├── 01_clean.py            # load, document, and validate the analysis sample
-│   ├── 02_replicate.py        # reproduce the authors' primary models
-│   ├── 03_message_effects.py  # assignment, video effects, and content contrasts
-│   ├── 04_mechanisms.py       # exploratory perceptions and summary indices
-│   ├── 05_diagnostics.py      # balance, missingness, and original-code specification
-│   ├── 06_figures.py          # draw figures from result tables
-│   └── analysis_utils.py      # shared model settings and table helpers
-├── checks/check_paper.py      # optional manuscript consistency checks
-├── tests/test_analysis.py     # focused synthetic checks
-├── paper/                     # LaTeX source and compiled paper
-├── data/                      # not tracked; see Data above
+│   ├── 01_clean.py            # load and validate the analysis sample
+│   ├── 02_replicate.py        # the authors' primary models
+│   ├── 03_message_effects.py  # assignment, video effects, content contrasts
+│   ├── 04_mechanisms.py       # exploratory perceptions and indices
+│   ├── 05_diagnostics.py      # balance, missingness, the authors' video-type regression
+│   ├── 06_figures.py          # figures from the result tables
+│   ├── 07_paper_numbers.py    # numbers for the paper, from the result tables
+│   └── analysis_utils.py      # shared model settings and helpers
+├── tests/test_analysis.py
+├── paper/                     # LaTeX source, generated numbers, compiled paper
+├── data/                      # not tracked; see Data
 └── output/                    # tables and figures
 ```
 
-Each analysis script can also be run directly after `01_clean.py`.
+Steps 2–5 read the cleaned data from step 1. Steps 6 and 7 use the resulting CSVs.
 
 ## License
 
-The code is released under the [MIT License](LICENSE). The paper (`paper/main.tex` and `paper/main.pdf`) is licensed under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). The data belong to Mattingly et al. and are distributed under the terms of their Dataverse replication package; they are not redistributed here.
+Code: [MIT](LICENSE). Paper (`paper/main.tex`, `paper/main.pdf`): [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). The data belong to Mattingly et al. and are distributed under the terms of their Dataverse package; they are not redistributed here.
